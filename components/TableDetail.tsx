@@ -23,6 +23,7 @@ interface Product {
   category: 'bebida' | 'comida'
   subcategory: string
   paid?: boolean
+  alwaysPrepared?: boolean
 }
 
 interface TableDetailProps {
@@ -50,13 +51,13 @@ const quickNotes = [
   "Muy hecho"
 ]
 
-export default function TableDetail({ 
-  tableId, 
-  products, 
+export default function TableDetail({
+  tableId,
+  products,
   availableProducts,
-  onAddProduct, 
-  onUpdateStatus, 
-  onUpdateQuantity, 
+  onAddProduct,
+  onUpdateStatus,
+  onUpdateQuantity,
   onUpdateNotes,
   onRemoveProduct,
   onReleaseTable,
@@ -125,11 +126,6 @@ export default function TableDetail({
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Mesa {tableId}</h2>
-        <Button onClick={onReleaseTable} variant="destructive">Liberar Mesa</Button>
-      </div>
-      
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="text-xl">
@@ -185,7 +181,6 @@ export default function TableDetail({
           </Tabs>
         </CardContent>
       </Card>
-
       {products.length > 0 && (
         <Card>
           <CardHeader>
@@ -199,12 +194,12 @@ export default function TableDetail({
                 <Card key={product.id} className={`${getStatusColor(product.prepared, product.served)} p-4`}>
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                     <div className="flex-1 mb-2 sm:mb-0">
-                      <h3 
+                      <h3
                         className={`font-semibold cursor-pointer ${product.paid ? 'line-through text-gray-500' : ''}`}
                         onClick={() => onTogglePaid(product.id)}
                       >
                         {product.name}{' '}
-                        {product.quantity > 1 
+                        {product.quantity > 1
                           ? `(${product.price.toFixed(2)} € x ${product.quantity} = ${(product.price * product.quantity).toFixed(2)} €)`
                           : `${product.price.toFixed(2)} €`
                         }
@@ -212,45 +207,47 @@ export default function TableDetail({
                     </div>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                       <div className="flex items-center space-x-2">
-                        <Button 
+                        <Button
                           onClick={() => handleQuantityChange(product, product.quantity - 1)}
                           variant="outline"
                           size="icon"
-                          disabled={product.paid || product.prepared || product.served}
+                          disabled={product.paid || (!product.alwaysPrepared && (product.prepared || product.served))}
                         >
                           -
                         </Button>
-                        <Input 
-                          type="number" 
-                          value={product.quantity} 
+                        <Input
+                          type="number"
+                          value={product.quantity}
                           onChange={(e) => handleQuantityChange(product, parseInt(e.target.value) || 0)}
                           className="w-16 text-center"
-                          disabled={product.paid || product.prepared || product.served}
+                          disabled={product.paid || (!product.alwaysPrepared && (product.prepared || product.served))}
                         />
-                        <Button 
+                        <Button
                           onClick={() => handleQuantityChange(product, product.quantity + 1)}
                           variant="outline"
                           size="icon"
-                          disabled={product.paid || product.prepared || product.served}
+                          disabled={product.paid || (!product.alwaysPrepared && (product.prepared || product.served))}
                         >
                           +
                         </Button>
                       </div>
                       <div className="flex items-center space-x-2">
+                        {!product.alwaysPrepared && (
+                          <div className="flex flex-col items-center">
+                            <Checkbox
+                              id={`prepared-${product.id}`}
+                              checked={product.prepared}
+                              onCheckedChange={(checked) => onUpdateStatus(product.id, checked as boolean, product.served)}
+                            />
+                            <label htmlFor={`prepared-${product.id}`} className="text-xs">Prep</label>
+                          </div>
+                        )}
                         <div className="flex flex-col items-center">
-                          <Checkbox 
-                            id={`prepared-${product.id}`}
-                            checked={product.prepared}
-                            onCheckedChange={(checked) => onUpdateStatus(product.id, checked as boolean, product.served)}
-                          />
-                          <label htmlFor={`prepared-${product.id}`} className="text-xs">Prep</label>
-                        </div>
-                        <div className="flex flex-col items-center">
-                          <Checkbox 
+                          <Checkbox
                             id={`served-${product.id}`}
                             checked={product.served}
                             onCheckedChange={(checked) => onUpdateStatus(product.id, product.prepared, checked as boolean)}
-                            disabled={!product.prepared}
+                            disabled={!product.prepared && !product.alwaysPrepared}
                           />
                           <label htmlFor={`served-${product.id}`} className="text-xs">Serv</label>
                         </div>
@@ -270,14 +267,14 @@ export default function TableDetail({
           </CardContent>
         </Card>
       )}
-      
-      <Card className="bg-primary text-primary-foreground">
+      <Card className="sticky bottom-2 bg-primary text-primary-foreground">
         <CardContent className="flex justify-between items-center p-6">
-          <CardTitle className="text-2xl">TOTAL</CardTitle>
-          <span className="text-3xl font-bold">{unpaidTotal.toFixed(2)} €</span>
+          <CardTitle className="text-2xl">Mesa {tableId}</CardTitle>
+          <Button onClick={onReleaseTable}>
+            <span className="text-3xl font-bold">{unpaidTotal.toFixed(2)} €</span>
+          </Button>
         </CardContent>
       </Card>
-
       <Dialog open={noteProductId !== null} onOpenChange={(open) => !open && setNoteProductId(null)}>
         <DialogContent>
           <DialogHeader>

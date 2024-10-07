@@ -358,8 +358,12 @@ export default function Home() {
 
   const getTableColor = (table: Table) => {
     if (!table.occupied) return 'bg-gray-200'
-    if (table.unpaidTotal === 0) return 'bg-green-200'
-    return 'bg-yellow-200'
+    if (tableProducts[table.id].some(product => !product.prepared))
+      return tableProducts[table.id].some(product => product.prepared && !product.served)
+        ? 'bg-gradient-to-r from-yellow-200 to-blue-200'
+        : 'bg-yellow-200'
+    if (tableProducts[table.id].some(product => !product.served)) return 'bg-blue-200'
+    return 'bg-green-200'
   }
 
   const handleStatusChange = (productId: number, prepared: boolean, served: boolean) => {
@@ -554,7 +558,7 @@ export default function Home() {
                   <ClipboardList className="h-4 w-4"/>
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+              <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Registro de pedidos</DialogTitle>
                 </DialogHeader>
@@ -579,23 +583,17 @@ export default function Home() {
                       </Card>
                   ))}
                 </div>
-                <div className="mt-4 flex justify-between items-center space-x-4">
-                  <Card className="bg-primary text-primary-foreground flex-grow">
-                    <CardContent className="flex justify-between items-center p-4">
-                      <CardTitle className="text-xl">TOTAL</CardTitle>
+                <Card className="sticky bottom-2 bg-primary text-primary-foreground flex-grow">
+                  <CardContent className="flex justify-between items-center p-4">
+                    <CardTitle className="text-xl">TOTAL</CardTitle>
+                    <Button
+                        onClick={handleLiquidateOrders}
+                        disabled={orders.length === 0}
+                    >
                       <span className="text-2xl font-bold">{calculateTotalLiquidation().toFixed(2)} €</span>
-                    </CardContent>
-                  </Card>
-                  <Button
-                      variant="destructive"
-                      onClick={handleLiquidateOrders}
-                      disabled={orders.length === 0}
-                      className="h-full"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2"/>
-                    Liquidar
-                  </Button>
-                </div>
+                    </Button>
+                  </CardContent>
+                </Card>
               </DialogContent>
             </Dialog>
           </div>
