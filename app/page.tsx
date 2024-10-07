@@ -660,7 +660,10 @@ export default function Home() {
                        className="mb-2 p-2 border rounded transition-opacity duration-300"
                        style={{opacity: product.prepared ? 0.5 : 1}}>
                     <div className="flex justify-between items-center">
-                    <span className="flex-1">
+                    <span className="flex-1 space-x-2">
+                      {product.quantity > 1 && (
+                          <span className="text-muted-foreground">{product.quantity} x</span>
+                      )}
                       <strong>{product.name}</strong>
                     </span>
                       <span className="text-muted-foreground mr-2">Mesa {product.tableId}</span>
@@ -689,7 +692,10 @@ export default function Home() {
                   <div key={product.id} className="mb-2 p-2 border rounded transition-opacity duration-300"
                        style={{opacity: product.served ? 0.5 : 1}}>
                     <div className="flex justify-between items-center">
-                    <span className="flex-1">
+                    <span className="flex-1 space-x-2">
+                      {product.quantity > 1 && (
+                          <span className="text-muted-foreground">{product.quantity} x</span>
+                      )}
                       <strong>{product.name}</strong>
                     </span>
                       <span className="text-muted-foreground mr-2">Mesa {product.tableId}</span>
