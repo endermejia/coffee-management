@@ -1,24 +1,27 @@
-import { useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface LoginProps {
-  onLogin: (username: string, password: string) => void
+  onLogin: (username: string, password: string) => void;
 }
 
 export default function Login({ onLogin }: LoginProps) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onLogin(username, password)
-  }
+    e.preventDefault();
+    onLogin(username, password);
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-100">
-      <form onSubmit={handleSubmit} className="p-6 bg-white rounded shadow-md w-80">
+      <form
+        onSubmit={handleSubmit}
+        className="p-6 bg-white rounded shadow-md w-80"
+      >
         <h2 className="mb-4 text-2xl font-bold text-center">Iniciar sesión</h2>
         <div className="mb-4">
           <Label htmlFor="username">Usuario</Label>
@@ -40,8 +43,10 @@ export default function Login({ onLogin }: LoginProps) {
             required
           />
         </div>
-        <Button type="submit" className="w-full">Iniciar sesión</Button>
+        <Button type="submit" className="w-full">
+          Iniciar sesión
+        </Button>
       </form>
     </div>
-  )
+  );
 }

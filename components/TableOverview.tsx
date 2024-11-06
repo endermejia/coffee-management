@@ -1,24 +1,31 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface Table {
-  id: number
-  occupied: boolean
-  total: number
-  unpaidTotal: number
+  id: number;
+  occupied: boolean;
+  total: number;
+  unpaidTotal: number;
 }
 
 interface TableOverviewProps {
-  tables: Table[]
-  onTableSelect: (tableId: number) => void
-  getTableColor: (table: Table) => string
+  tables: Table[];
+  onTableSelect: (tableId: number) => void;
+  getTableColor: (table: Table) => string;
 }
 
-export default function TableOverview({ tables, onTableSelect, getTableColor }: TableOverviewProps) {
+export default function TableOverview({
+  tables,
+  onTableSelect,
+  getTableColor,
+}: TableOverviewProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
       {tables.map((table) => (
-        <Card key={table.id} className={`${getTableColor(table)} hover:shadow-lg transition-shadow`}>
+        <Card
+          key={table.id}
+          className={`${getTableColor(table)} hover:shadow-lg transition-shadow`}
+        >
           <CardContent className="p-4">
             <Button
               onClick={() => onTableSelect(table.id)}
@@ -34,5 +41,5 @@ export default function TableOverview({ tables, onTableSelect, getTableColor }: 
         </Card>
       ))}
     </div>
-  )
+  );
 }
