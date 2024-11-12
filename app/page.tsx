@@ -33,11 +33,14 @@ import TableOverview from "../components/TableOverview";
 import TableDetail from "../components/TableDetail";
 import ConfirmationModal from "../components/ConfirmationModal";
 import {
+  createOrder,
+  deleteOrder,
   getProducts,
   getTables,
   OrderData,
   ProductData,
   TableData,
+  updateOrder,
 } from "@/lib/strapi";
 
 interface AppConfig {
@@ -56,7 +59,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [tables, setTables] = useState<TableData[]>([]);
   const [products, setProducts] = useState<ProductData[]>([]);
-  const [selectedTable, setSelectedTable] = useState<number | null>(null);
+  const [selectedTable, setSelectedTable] = useState<TableData | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
@@ -150,205 +153,281 @@ export default function App() {
     [],
   );
 
-  const handleAddProduct = (productId: number) => {
-    if (!selectedTable) return;
-    console.log("handleAddProduct: (productId)", productId);
+  const handleAddProduct = async (product: ProductData) => {
+    if (!selectedTable || !product) return;
+
+    try {
+      const newOrder: Omit<OrderData, "id"> = {
+        quantity: 1,
+        prepared: product.alwaysPrepared,
+        served: false,
+        paid: false,
+        product: product,
+        notes: "",
+        orderId: Date.now(),
+        releasedAt: 0,
+        tableId: selectedTable.id,
+        tableNumber: selectedTable.number,
+      };
+
+      const response = await createOrder(newOrder);
+      if (response.data) {
+           console.log('PRODUCTO AÑADIDO:', response.data);
+      }
+    } catch (error) {
+      console.error("Error adding product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add product to order",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdateStatus = (
-    productId: number,
+  const handleUpdateStatus = async (
+    orderId: number,
     prepared: boolean,
     served: boolean,
   ) => {
     if (!selectedTable) return;
-    console.log("handleUpdateStatus");
 
-    if (!config.disableNotifications) {
-      if (prepared && !served) {
-        toast({
-          title: "Producto preparado",
-          description: "El producto ha sido marcado como preparado.",
-          duration: config.notificationDuration,
-          action: (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                handleUpdateStatus(productId, false, false);
-                toast({
-                  title: "Acción deshecha",
-                  description: "El producto ha sido marcado como no preparado.",
-                  duration: config.notificationDuration,
-                });
-              }}
-            >
-              Deshacer
-            </Button>
-          ),
-        });
-      } else if (served) {
-        toast({
-          title: "Producto servido",
-          description: "El producto ha sido marcado como servido.",
-          duration: config.notificationDuration,
-          action: (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                handleUpdateStatus(productId, true, false);
-                toast({
-                  title: "Acción deshecha",
-                  description: "El producto ha sido marcado como no servido.",
-                  duration: config.notificationDuration,
-                });
-              }}
-            >
-              Deshacer
-            </Button>
-          ),
-        });
+    try {
+      const response = await updateOrder(orderId, { prepared, served });
+      if (response.data) {
+        console.log('PRODUCTO ACTUALIZADO:', response.data);
+
+        if (!config.disableNotifications) {
+          if (prepared && !served) {
+            toast({
+              title: "Producto preparado",
+              description: "El producto ha sido marcado como preparado.",
+              duration: config.notificationDuration,
+              action: (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    handleUpdateStatus(orderId, false, false);
+                    toast({
+                      title: "Acción deshecha",
+                      description:
+                        "El producto ha sido marcado como no preparado.",
+                      duration: config.notificationDuration,
+                    });
+                  }}
+                >
+                  Deshacer
+                </Button>
+              ),
+            });
+          } else if (served) {
+            toast({
+              title: "Producto servido",
+              description: "El producto ha sido marcado como servido.",
+              duration: config.notificationDuration,
+              action: (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    handleUpdateStatus(orderId, true, false);
+                    toast({
+                      title: "Acción deshecha",
+                      description:
+                        "El producto ha sido marcado como no servido.",
+                      duration: config.notificationDuration,
+                    });
+                  }}
+                >
+                  Deshacer
+                </Button>
+              ),
+            });
+          }
+        }
       }
+    } catch (error) {
+      console.error("Error updating order status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order status",
+        duration: 3000,
+        variant: "destructive",
+      });
     }
   };
 
-  const handleUpdateQuantity = (productId: number, quantity: number) => {
+  const handleUpdateQuantity = async (orderId: number, quantity: number) => {
     if (!selectedTable) return;
-    console.log(
-      "handleUpdateQuantity: (productId/quantity)",
-      productId,
-      quantity,
-    );
-    //
-    // setTableProducts((prev) => {
-    //   const updatedProducts = prev[selectedTable].map((product) =>
-    //     product.id === productId ? { ...product, quantity } : product,
-    //   );
-    //   updateTableTotals(selectedTable, updatedProducts);
-    //   return { ...prev, [selectedTable]: updatedProducts };
-    // });
+
+    try {
+      const response = await updateOrder(orderId, { quantity });
+      if (response.data) {
+        setTables((prevTables) =>
+          prevTables.map((table) =>
+            table.id === selectedTable.id
+              ? {
+                  ...table,
+                  orders: table.orders.map((order) =>
+                    order.id === orderId ? { ...order, quantity } : order,
+                  ),
+                }
+              : table,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Error updating order quantity:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order quantity",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleUpdateNotes = (productId: number, notes: string) => {
+  const handleUpdateNotes = async (orderId: number, notes: string) => {
     if (!selectedTable) return;
-    console.log("handleUpdateNotes: (productId/notes)", productId, notes);
 
-    // setTableProducts((prev) => ({
-    //   ...prev,
-    //   [selectedTable]: prev[selectedTable].map((product) =>
-    //     product.id === productId ? { ...product, notes } : product,
-    //   ),
-    // }));
+    try {
+      const response = await updateOrder(orderId, { notes });
+      if (response.data) {
+        setTables((prevTables) =>
+          prevTables.map((table) =>
+            table.id === selectedTable.id
+              ? {
+                  ...table,
+                  orders: table.orders.map((order) =>
+                    order.id === orderId ? { ...order, notes } : order,
+                  ),
+                }
+              : table,
+          ),
+        );
+      }
+    } catch (error) {
+      console.error("Error updating order notes:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order notes",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
   };
 
-  const handleRemoveProduct = (productId: number) => {
+  const handleRemoveOrder = async (orderId: number) => {
     if (!selectedTable) return;
-    console.log("handleRemoveProduct: (productId)", productId);
 
-    // setTableProducts((prev) => {
-    //   const removedProduct = prev[selectedTable].find(
-    //     (product) => product.id === productId,
-    //   );
-    //   const updatedProducts = prev[selectedTable].filter(
-    //     (product) => product.id !== productId,
-    //   );
-    //   updateTableTotals(selectedTable, updatedProducts);
-    //
-    //   if (removedProduct && !config.disableNotifications) {
-    //     toast({
-    //       title: "Producto eliminado",
-    //       description: `${removedProduct.name} ha sido eliminado del pedido.`,
-    //       duration: config.notificationDuration,
-    //       action: (
-    //         <Button
-    //           variant="outline"
-    //           size="sm"
-    //           onClick={() => {
-    //             setTableProducts((prevState) => {
-    //               const restoredProducts = [
-    //                 ...prevState[selectedTable],
-    //                 { ...removedProduct, id: Date.now() },
-    //               ];
-    //               updateTableTotals(selectedTable, restoredProducts);
-    //               return { ...prevState, [selectedTable]: restoredProducts };
-    //             });
-    //             toast({
-    //               title: "Producto restaurado",
-    //               description: `${removedProduct.name} ha sido restaurado al pedido.`,
-    //               duration: config.notificationDuration,
-    //             });
-    //           }}
-    //         >
-    //           Deshacer
-    //         </Button>
-    //       ),
-    //     });
-    //   }
-    //
-    //   return { ...prev, [selectedTable]: updatedProducts };
-    // });
+    try {
+      await deleteOrder(orderId);
+      setTables((prevTables) =>
+        prevTables.map((table) =>
+          table.id === selectedTable.id
+            ? {
+                ...table,
+                orders: table.orders.filter((order) => order.id !== orderId),
+              }
+            : table,
+        ),
+      );
+
+      if (!config.disableNotifications) {
+        toast({
+          title: "Producto eliminado",
+          description: "El producto ha sido eliminado del pedido.",
+          duration: config.notificationDuration,
+        });
+      }
+    } catch (error) {
+      console.error("Error removing product:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove product from order",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleReleaseTable = () => {
     setIsConfirmationModalOpen(true);
   };
 
-  const confirmReleaseTable = () => {
+  const confirmReleaseTable = async () => {
     if (!selectedTable) return;
-    console.log("confirmReleaseTable: (selectedTable)", selectedTable);
 
-    // const tableOrder = tableProducts[selectedTable];
-    // if (tableOrder && tableOrder.length > 0) {
-    //   const newOrder: Order = {
-    //     id: Date.now(),
-    //     tableId: selectedTable,
-    //     products: tableOrder,
-    //     total: calculateTableTotal(tableOrder),
-    //     releasedAt: Date.now(),
-    //   };
-    //   setOrders((prev) => [...prev, newOrder]);
-    // }
-    //
-    // setTableProducts((prev) => {
-    //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    //   const { [selectedTable]: _, ...rest } = prev;
-    //   return rest;
-    // });
-    //
-    // setTables((prev) =>
-    //   prev.map((table) =>
-    //     table.id === selectedTable
-    //       ? { ...table, occupied: false, total: 0, unpaidTotal: 0 }
-    //       : table,
-    //   ),
-    // );
+    try {
+      if (selectedTable) {
+        await Promise.all(
+          selectedTable.orders.map((order) =>
+            updateOrder(order.id, { releasedAt: Date.now() }),
+          ),
+        ).then(() => {
+          console.log("Orders released");
+        });
 
-    setSelectedTable(null);
-    setIsConfirmationModalOpen(false);
+        setTables((prevTables) =>
+          prevTables.map((t) =>
+            t.id === selectedTable.id ? { ...t, orders: [] } : t,
+          ),
+        );
 
-    if (!config.disableNotifications) {
+        setSelectedTable(null);
+        setIsConfirmationModalOpen(false);
+
+        if (!config.disableNotifications) {
+          toast({
+            title: "Mesa liberada",
+            description: `La mesa ${selectedTable} ha sido liberada.`,
+            duration: config.notificationDuration,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Error releasing table:", error);
       toast({
-        title: "Mesa liberada",
-        description: `La mesa ${selectedTable} ha sido liberada.`,
-        duration: config.notificationDuration,
+        title: "Error",
+        description: "Failed to release table",
+        duration: 3000,
+        variant: "destructive",
       });
     }
   };
 
-  const handleTogglePaid = (productId: number) => {
+  const handleTogglePaid = async (orderId: number) => {
     if (!selectedTable) return;
-    console.log("handleTogglePaid: (productId)", productId);
 
-    // setTableProducts((prev) => {
-    //   const updatedProducts = prev[selectedTable].map((product) => {
-    //     if (product.id === productId) {
-    //       return { ...product, paid: !product.paid };
-    //     }
-    //     return product;
-    //   });
-    //   updateTableTotals(selectedTable, updatedProducts);
-    //   return { ...prev, [selectedTable]: updatedProducts };
-    // });
+    try {
+      const order = selectedTable?.orders.find((o) => o.id === orderId);
+      if (order) {
+        const response = await updateOrder(orderId, { paid: !order.paid });
+        if (response.data) {
+          setTables((prevTables) =>
+            prevTables.map((t) =>
+              t.id === selectedTable.id
+                ? {
+                    ...t,
+                    orders: t.orders.map((o) =>
+                      o.id === orderId ? { ...o, paid: !o.paid } : o,
+                    ),
+                  }
+                : t,
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling paid status:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update paid status",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLiquidateOrders = () => {
@@ -578,21 +657,17 @@ export default function App() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="theme">Tema</Label>
-                    <select
+                    <Label htmlFor="theme">Modo oscuro</Label>
+                    <Switch
                       id="theme"
-                      value={config.theme}
-                      onChange={(e) =>
+                      checked={config.theme === "dark"}
+                      onCheckedChange={(checked) =>
                         setConfig((prev) => ({
                           ...prev,
-                          theme: e.target.value as "light" | "dark",
+                          theme: checked ? "dark" : "light",
                         }))
                       }
-                      className="border rounded p-2"
-                    >
-                      <option value="light">Claro</option>
-                      <option value="dark">Oscuro</option>
-                    </select>
+                    />
                   </div>
                   <div className="flex items-center justify-between">
                     <Label htmlFor="num-tables">Número de mesas</Label>
@@ -710,10 +785,10 @@ export default function App() {
         <TabsContent value="tables">
           {selectedTable ? (
             <TableDetail
-              tableId={selectedTable}
+              table={selectedTable}
               orders={
                 tables
-                  .find((table) => table.number === selectedTable)
+                  .find((table) => table.id === selectedTable.id)
                   ?.orders.filter((order) => !order.releasedAt) || []
               }
               availableProducts={products}
@@ -721,12 +796,12 @@ export default function App() {
               onUpdateStatus={handleUpdateStatus}
               onUpdateQuantity={handleUpdateQuantity}
               onUpdateNotes={handleUpdateNotes}
-              onRemoveProduct={handleRemoveProduct}
+              onRemoveOrder={handleRemoveOrder}
               onReleaseTable={handleReleaseTable}
               onTogglePaid={handleTogglePaid}
               unpaidTotal={
                 calculateUnpaidTotalByOrders(
-                  tables.find((t) => t.number === selectedTable)?.orders || [],
+                  tables.find((t) => t.id === selectedTable.id)?.orders || [],
                 ) || 0
               }
             >
@@ -748,7 +823,7 @@ export default function App() {
                 {products.map((product) => (
                   <Button
                     key={product.id}
-                    onClick={() => handleAddProduct(product.id)}
+                    onClick={() => handleAddProduct(product)}
                     className="text-left"
                   >
                     {product.name}

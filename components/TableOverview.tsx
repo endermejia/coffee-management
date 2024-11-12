@@ -4,7 +4,7 @@ import { OrderData, TableData } from "@/lib/strapi";
 
 interface TableOverviewProps {
   tables: TableData[];
-  onTableSelect: (tableId: number) => void;
+  onTableSelect: (table: TableData) => void;
   getTableColor: (table: TableData) => string;
   calculateTableUnpaidTotal: (orders: OrderData[]) => number;
 }
@@ -26,7 +26,7 @@ export default function TableOverview({
             >
               <CardContent className="p-4">
                 <Button
-                  onClick={() => onTableSelect(table.id)}
+                  onClick={() => onTableSelect(table)}
                   variant={table.orders.length ? "default" : "outline"}
                   className="w-full h-full flex flex-col items-center justify-center"
                 >

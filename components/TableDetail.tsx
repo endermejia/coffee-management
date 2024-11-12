@@ -21,24 +21,24 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { FileText } from "lucide-react";
-import { OrderData, ProductData } from "@/lib/strapi";
+import {OrderData, ProductData, TableData} from "@/lib/strapi";
 
 interface TableDetailProps {
   children: React.ReactNode;
-  tableId: number;
+  table: TableData;
   orders: OrderData[];
   availableProducts: ProductData[];
-  onAddProduct: (productId: number) => void;
+  onAddProduct: (product: ProductData) => void;
   onUpdateStatus: (
-    productId: number,
+    orderId: number,
     prepared: boolean,
     served: boolean,
   ) => void;
-  onUpdateQuantity: (productId: number, quantity: number) => void;
-  onUpdateNotes: (productId: number, notes: string) => void;
-  onRemoveProduct: (productId: number) => void;
+  onUpdateQuantity: (orderId: number, quantity: number) => void;
+  onUpdateNotes: (orderId: number, notes: string) => void;
+  onRemoveOrder: (orderId: number) => void;
   onReleaseTable: () => void;
-  onTogglePaid: (productId: number) => void;
+  onTogglePaid: (orderId: number) => void;
   unpaidTotal: number;
 }
 
@@ -54,20 +54,20 @@ const quickNotes = [
 ];
 
 export default function TableDetail({
-  tableId,
+  table,
   orders,
   availableProducts,
   onAddProduct,
   onUpdateStatus,
   onUpdateQuantity,
   onUpdateNotes,
-  onRemoveProduct,
+  onRemoveOrder,
   onReleaseTable,
   onTogglePaid,
   unpaidTotal,
 }: TableDetailProps) {
   const [, setSelectedCategory] = useState<"bebida" | "comida">("bebida");
-  const [noteProductId, setNoteProductId] = useState<number | null>(null);
+  const [noteOrder, setNoteOrder] = useState<OrderData | null>(null);
   const [noteText, setNoteText] = useState("");
   const { toast } = useToast();
 
@@ -81,7 +81,7 @@ export default function TableDetail({
     if (order.paid) return;
 
     if (newQuantity === 0) {
-      onRemoveProduct(order.id);
+      onRemoveOrder(order.id);
       toast({
         title: "Producto eliminado",
         description: `${order.product.name} ha sido eliminado del pedido.`,
@@ -90,27 +90,26 @@ export default function TableDetail({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onAddProduct(order.id)}
+            onClick={() => onAddProduct(order.product)}
           >
             Deshacer
           </Button>
         ),
       });
     } else {
-      onUpdateQuantity(order.product.id, newQuantity);
+      onUpdateQuantity(order.id, newQuantity);
     }
   };
 
-  const handleAddNote = (productId: number) => {
-    setNoteProductId(productId);
-    const product = orders.find((p) => p.id === productId);
-    setNoteText(product?.notes || "");
+  const handleAddNote = (order: OrderData) => {
+    setNoteOrder(order);
+    setNoteText(order?.notes || "");
   };
 
   const handleSaveNote = () => {
-    if (noteProductId !== null) {
-      onUpdateNotes(noteProductId, noteText);
-      setNoteProductId(null);
+    if (noteOrder !== null) {
+      onUpdateNotes(noteOrder.id, noteText);
+      setNoteOrder(null);
       setNoteText("");
     }
   };
@@ -173,7 +172,7 @@ export default function TableDetail({
                           {products.map((product) => (
                             <Button
                               key={product.id}
-                              onClick={() => onAddProduct(product.id)}
+                              onClick={() => onAddProduct(product)}
                               variant="outline"
                               className="justify-start"
                             >
@@ -200,7 +199,7 @@ export default function TableDetail({
                           {products.map((product) => (
                             <Button
                               key={product.id}
-                              onClick={() => onAddProduct(product.id)}
+                              onClick={() => onAddProduct(product)}
                               variant="outline"
                               className="justify-start"
                             >
@@ -336,7 +335,7 @@ export default function TableDetail({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleAddNote(order.id)}
+                        onClick={() => handleAddNote(order)}
                       >
                         <FileText className="h-4 w-4 mr-2" />
                         Nota
@@ -354,7 +353,7 @@ export default function TableDetail({
       )}
       <Card className="sticky bottom-2 bg-primary text-primary-foreground">
         <CardContent className="flex justify-between items-center p-6">
-          <CardTitle className="text-2xl">Mesa {tableId}</CardTitle>
+          <CardTitle className="text-2xl">Mesa {table.number}</CardTitle>
           <Button onClick={onReleaseTable}>
             <span className="text-3xl font-bold">
               {unpaidTotal.toFixed(2)} €
@@ -363,8 +362,8 @@ export default function TableDetail({
         </CardContent>
       </Card>
       <Dialog
-        open={noteProductId !== null}
-        onOpenChange={(open) => !open && setNoteProductId(null)}
+        open={noteOrder !== null}
+        onOpenChange={(open) => !open && setNoteOrder(null)}
       >
         <DialogContent>
           <DialogHeader>

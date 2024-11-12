@@ -2,12 +2,24 @@
 
 const { STRAPI_HOST, STRAPI_TOKEN } = process.env;
 
-async function query(url: string) {
-  return fetch(`${STRAPI_HOST}/api/${url}`, {
+async function query(url: string, method: string = 'GET', body?: unknown) {
+  const options: RequestInit = {
+    method,
     headers: {
       Authorization: `Bearer ${STRAPI_TOKEN}`,
+      'Content-Type': 'application/json',
     },
-  }).then((res) => res.json());
+  };
+
+  if (body) {
+    options.body = JSON.stringify({ data: body });
+  }
+
+  const response = await fetch(`${STRAPI_HOST}/api/${url}`, options);
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+  return response.json();
 }
 
 export interface Response<T> {
@@ -76,7 +88,7 @@ export async function getProducts(): Promise<PageableResponse<ProductData>> {
   return query("products").then((res: PageableResponse<ProductData>) => res);
 }
 
-// PRODUCT ORDER
+// ORDER
 
 export interface OrderData {
   id: number;
@@ -109,6 +121,18 @@ export async function getOrders(): Promise<PageableResponse<OrderData>> {
   });
 }
 
+export async function createOrder(orderData: Omit<OrderData, 'id'>): Promise<Response<OrderData>> {
+  return query('orders', 'POST', orderData);
+}
+
+export async function updateOrder(id: number, orderData: Partial<OrderData>): Promise<Response<OrderData>> {
+  return query(`orders/${id}`, 'PUT', orderData);
+}
+
+export async function deleteOrder(id: number): Promise<Response<OrderData>> {
+  return query(`orders/${id}`, 'DELETE');
+}
+
 // TABLE
 
 export interface TableData {
@@ -122,7 +146,7 @@ interface TableStrapiData extends Omit<TableData, "orders"> {
 }
 
 export async function getTables(): Promise<PageableResponse<TableData>> {
-  return query("tables").then((res: PageableResponse<TableStrapiData>) => {   
+  return query("tables").then((res: PageableResponse<TableStrapiData>) => {
     return {
       ...res,
       data: res.data.map((table) => ({
@@ -134,17 +158,17 @@ export async function getTables(): Promise<PageableResponse<TableData>> {
         })),
       })),
     };
-  });  
+  });
 }
 
-export async function getTableById(id: number): Promise<Response<TableData>> {
-  return query(`tables/${id}`).then((res: Response<TableData>) => res);
+export async function createTable(tableData: Omit<TableData, 'id'>): Promise<Response<TableData>> {
+  return query('tables', 'POST', tableData);
 }
 
-export async function getTableByNumber(
-  number: number,
-): Promise<TableData | undefined> {
-  return query(`tables?filters[number][$eq]=${number}`).then(
-    (res: Response<TableData>) => res.data[0],
-  );
+export async function updateTable(id: number, tableData: Partial<TableData>): Promise<Response<TableData>> {
+  return query(`tables/${id}`, 'PUT', tableData);
+}
+
+export async function deleteTable(id: number): Promise<Response<TableData>> {
+  return query(`tables/${id}`, 'DELETE');
 }
