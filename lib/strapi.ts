@@ -85,7 +85,9 @@ export interface ProductData {
 }
 
 export async function getProducts(): Promise<PageableResponse<ProductData>> {
-  return query("products").then((res: PageableResponse<ProductData>) => res);
+  return query("products?populate[0]=category&populate[1]=subcategory").then(
+    (res: PageableResponse<ProductData>) => res,
+  );
 }
 
 // ORDER

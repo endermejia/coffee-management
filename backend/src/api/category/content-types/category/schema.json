@@ -13,7 +13,11 @@
   "pluginOptions": {},
   "attributes": {
     "name": {
-      "type": "string"
+      "type": "string",
+      "regex": "comida|bebida",
+      "default": "comida",
+      "unique": true,
+      "required": true
     },
     "products": {
       "type": "relation",

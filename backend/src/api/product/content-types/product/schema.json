@@ -23,7 +23,9 @@
       "required": true
     },
     "alwaysPrepared": {
-      "type": "boolean"
+      "type": "boolean",
+      "default": false,
+      "required": true
     },
     "category": {
       "type": "relation",

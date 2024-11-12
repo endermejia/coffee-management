@@ -525,7 +525,10 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
     draftAndPublish: false;
   };
   attributes: {
-    name: Schema.Attribute.String;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique &
+      Schema.Attribute.DefaultTo<'comida'>;
     products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     createdAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
@@ -621,7 +624,9 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
         minLength: 1;
       }>;
     price: Schema.Attribute.Decimal & Schema.Attribute.Required;
-    alwaysPrepared: Schema.Attribute.Boolean;
+    alwaysPrepared: Schema.Attribute.Boolean &
+      Schema.Attribute.Required &
+      Schema.Attribute.DefaultTo<false>;
     category: Schema.Attribute.Relation<'manyToOne', 'api::category.category'>;
     subcategory: Schema.Attribute.Relation<
       'manyToOne',
@@ -648,12 +653,15 @@ export interface ApiSubcategorySubcategory extends Struct.CollectionTypeSchema {
     singularName: 'subcategory';
     pluralName: 'subcategories';
     displayName: 'Subcategory';
+    description: '';
   };
   options: {
     draftAndPublish: true;
   };
   attributes: {
-    name: Schema.Attribute.String & Schema.Attribute.Required;
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
     products: Schema.Attribute.Relation<'oneToMany', 'api::product.product'>;
     createdAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
