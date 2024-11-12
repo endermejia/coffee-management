@@ -53,24 +53,12 @@ export interface CategoryData {
   products: ProductData[];
 }
 
-export async function getCategories(): Promise<PageableResponse<CategoryData>> {
-  return query("categories").then((res: PageableResponse<CategoryData>) => res);
-}
-
 // SUBCATEGORY
 
 export interface SubcategoryData {
   id: number;
   name: string;
   products: ProductData[];
-}
-
-export async function getSubcategories(): Promise<
-  PageableResponse<SubcategoryData>
-> {
-  return query("subcategories").then(
-    (res: PageableResponse<SubcategoryData>) => res,
-  );
 }
 
 // PRODUCT
@@ -100,7 +88,6 @@ export interface OrderData {
   paid: boolean;
   product: ProductData;
   notes: string;
-  orderId: number;
   releasedAt: number;
   tableId: number;
   tableNumber: number;
@@ -110,21 +97,11 @@ interface OrderStrapiData extends Omit<OrderData, "tableId" | "tableNumber"> {
   table: TableData;
 }
 
-export async function getOrders(): Promise<PageableResponse<OrderData>> {
-  return query("orders").then((res: PageableResponse<OrderStrapiData>) => {
-    return {
-      ...res,
-      data: res.data.map((order) => ({
-        ...order,
-        tableId: order.table.id,
-        tableNumber: order.table.number,
-      })),
-    };
-  });
-}
-
 export async function createOrder(
-  orderData: Omit<OrderData, "id">,
+  orderData: Omit<OrderData, "id" | "tableId" | "tableNumber" | "product"> & {
+    table: number;
+    product: number;
+  },
 ): Promise<Response<OrderData>> {
   return query("orders", "POST", orderData);
 }

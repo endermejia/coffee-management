@@ -77,7 +77,7 @@ export default function App() {
         const tablesData = await getTables();
         if (tablesData && tablesData.data) {
           console.log(tablesData);
-          setTables(tablesData.data);
+          setTables(tablesData.data.sort((a, b) => a.number - b.number));
         }
       } catch (error) {
         console.error("Error fetching tables:", error);
@@ -157,22 +157,57 @@ export default function App() {
     if (!selectedTable || !product) return;
 
     try {
-      const newOrder: Omit<OrderData, "id"> = {
+      const createOrderRequest: Omit<
+        OrderData,
+        "id" | "tableId" | "tableNumber" | "product"
+      > & {
+        table: number;
+        product: number;
+      } = {
         quantity: 1,
         prepared: product.alwaysPrepared,
         served: false,
         paid: false,
-        product: product,
+        product: product.id,
         notes: "",
-        orderId: Date.now(),
         releasedAt: 0,
-        tableId: selectedTable.id,
-        tableNumber: selectedTable.number,
+        table: selectedTable.id,
       };
 
-      const response = await createOrder(newOrder);
-      if (response.data) {
-        console.log("PRODUCTO AÑADIDO:", response.data);
+      const response = await createOrder(createOrderRequest);
+      if (response.data && response.data.length > 0) {
+        setTables((prevTables) =>
+          prevTables.map((table) =>
+            table.id === selectedTable.id
+              ? {
+                  ...table,
+                  orders: Array.isArray(table.orders)
+                    ? [...table.orders, response.data[0]]
+                    : [response.data[0]],
+                }
+              : table,
+          ),
+        );
+
+        setSelectedTable((prevTable) => {
+          if (prevTable) {
+            return {
+              ...prevTable,
+              orders: Array.isArray(prevTable.orders)
+                ? [...prevTable.orders, response.data[0]]
+                : [response.data[0]],
+            };
+          }
+          return prevTable;
+        });
+
+        if (!config.disableNotifications) {
+          toast({
+            title: "Producto añadido",
+            description: `${product.name} ha sido añadido a la mesa ${selectedTable.number}.`,
+            duration: config.notificationDuration,
+          });
+        }
       }
     } catch (error) {
       console.error("Error adding product:", error);
