@@ -32,136 +32,19 @@ import Login from "../components/Login";
 import TableOverview from "../components/TableOverview";
 import TableDetail from "../components/TableDetail";
 import ConfirmationModal from "../components/ConfirmationModal";
-import { getTableByNumber, getTables } from "@/lib/strapi";
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  prepared: boolean;
-  served: boolean;
-  quantity: number;
-  notes: string;
-  category: "bebida" | "comida";
-  subcategory: string;
-  tableId?: number;
-  paid?: boolean;
-  alwaysPrepared?: boolean;
-}
-
-interface Table {
-  id: number;
-  occupied: boolean;
-  total: number;
-  unpaidTotal: number;
-}
-
-interface Order {
-  id: number;
-  tableId: number;
-  products: Product[];
-  total: number;
-  releasedAt: number;
-}
+import {
+  getProducts,
+  getTables,
+  OrderData,
+  ProductData,
+  TableData,
+} from "@/lib/strapi";
 
 interface AppConfig {
   disableNotifications: boolean;
   notificationDuration: number;
   theme: "light" | "dark";
 }
-
-const initialProducts: Product[] = [
-  {
-    id: 1,
-    name: "Café",
-    price: 1.2,
-    prepared: false,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "bebida",
-    subcategory: "caliente",
-  },
-  {
-    id: 2,
-    name: "Té",
-    price: 1.0,
-    prepared: false,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "bebida",
-    subcategory: "caliente",
-  },
-  {
-    id: 3,
-    name: "Coca-Cola",
-    price: 1.5,
-    prepared: true,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "bebida",
-    subcategory: "fría",
-    alwaysPrepared: true,
-  },
-  {
-    id: 4,
-    name: "Agua",
-    price: 1.0,
-    prepared: true,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "bebida",
-    subcategory: "fría",
-    alwaysPrepared: true,
-  },
-  {
-    id: 5,
-    name: "Tostada",
-    price: 1.5,
-    prepared: false,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "comida",
-    subcategory: "desayuno",
-  },
-  {
-    id: 6,
-    name: "Croissant",
-    price: 1.2,
-    prepared: false,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "comida",
-    subcategory: "desayuno",
-  },
-  {
-    id: 7,
-    name: "Bocadillo",
-    price: 3.5,
-    prepared: false,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "comida",
-    subcategory: "almuerzo",
-  },
-  {
-    id: 8,
-    name: "Ensalada",
-    price: 4.5,
-    prepared: false,
-    served: false,
-    quantity: 1,
-    notes: "",
-    category: "comida",
-    subcategory: "almuerzo",
-  },
-];
 
 const initialConfig: AppConfig = {
   disableNotifications: false,
@@ -171,14 +54,10 @@ const initialConfig: AppConfig = {
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [tables, setTables] = useState<Table[]>([]);
+  const [tables, setTables] = useState<TableData[]>([]);
+  const [products, setProducts] = useState<ProductData[]>([]);
   const [selectedTable, setSelectedTable] = useState<number | null>(null);
-  const [tableProducts, setTableProducts] = useState<Record<number, Product[]>>(
-    {},
-  );
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [numberOfTables, setNumberOfTables] = useState(12);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -193,19 +72,9 @@ export default function App() {
     const fetchTables = async () => {
       try {
         const tablesData = await getTables();
-        const tableNumber = await getTableByNumber(1);
-        console.log("tableNumber", tableNumber);
-
         if (tablesData && tablesData.data) {
           console.log(tablesData);
-          setTables(
-            tablesData.data.map((table: { number: number }) => ({
-              id: table.number,
-              occupied: false, // será true si hay algun pedido en esta mesa
-              total: 0, // Can be calculated by summing the (price * quantity) of all associated product_orders.
-              unpaidTotal: 0, // Can be calculated by summing the (price * quantity) of all associated product_orders where paid is false.
-            })),
-          );
+          setTables(tablesData.data);
         }
       } catch (error) {
         console.error("Error fetching tables:", error);
@@ -218,6 +87,28 @@ export default function App() {
       }
     };
     fetchTables();
+  }, [toast]);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const productsData = await getProducts();
+
+        if (productsData && productsData.data) {
+          console.log(productsData);
+          setProducts(productsData.data);
+        }
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch products from Strapi",
+          duration: 3000,
+          variant: "destructive",
+        });
+      }
+    };
+    fetchProducts();
   }, [toast]);
 
   useEffect(() => {
@@ -241,54 +132,27 @@ export default function App() {
     }
   };
 
-  const calculateTableTotal = useCallback((products: Product[]) => {
-    return products.reduce(
-      (total, product) => total + product.price * product.quantity,
+  const calculateTotalByOrders = useCallback((orders: OrderData[]): number => {
+    return orders?.reduce(
+      (total, order) => total + order.product.price * order.quantity,
       0,
     );
   }, []);
 
-  const calculateTableUnpaidTotal = useCallback((products: Product[]) => {
-    return products.reduce((total, product) => {
-      if (!product.paid) {
-        return total + product.price * product.quantity;
-      }
-      return total;
-    }, 0);
-  }, []);
-
-  const updateTableTotals = useCallback(
-    (tableId: number, products: Product[]) => {
-      setTables((prev) =>
-        prev.map((table) =>
-          table.id === tableId
-            ? {
-                ...table,
-                total: calculateTableTotal(products),
-                unpaidTotal: calculateTableUnpaidTotal(products),
-                occupied: products.length > 0,
-              }
-            : table,
-        ),
+  const calculateUnpaidTotalByOrders = useCallback(
+    (orders: OrderData[]): number => {
+      return orders?.reduce(
+        (total, order) =>
+          total + order.product.price * order.quantity * (order.paid ? 0 : 1),
+        0,
       );
     },
-    [calculateTableTotal, calculateTableUnpaidTotal],
+    [],
   );
 
   const handleAddProduct = (productId: number) => {
     if (!selectedTable) return;
-
-    const productToAdd = initialProducts.find((p) => p.id === productId);
-    if (!productToAdd) return;
-
-    setTableProducts((prev) => {
-      const updatedProducts = [
-        ...(prev[selectedTable] || []),
-        { ...productToAdd, tableId: selectedTable, id: Date.now() },
-      ];
-      updateTableTotals(selectedTable, updatedProducts);
-      return { ...prev, [selectedTable]: updatedProducts };
-    });
+    console.log("handleAddProduct: (productId)", productId);
   };
 
   const handleUpdateStatus = (
@@ -297,16 +161,7 @@ export default function App() {
     served: boolean,
   ) => {
     if (!selectedTable) return;
-
-    setTableProducts((prev) => {
-      const updatedProducts = prev[selectedTable].map((product) =>
-        product.id === productId
-          ? { ...product, prepared: served ? true : prepared, served }
-          : product,
-      );
-      updateTableTotals(selectedTable, updatedProducts);
-      return { ...prev, [selectedTable]: updatedProducts };
-    });
+    console.log("handleUpdateStatus");
 
     if (!config.disableNotifications) {
       if (prepared && !served) {
@@ -359,72 +214,79 @@ export default function App() {
 
   const handleUpdateQuantity = (productId: number, quantity: number) => {
     if (!selectedTable) return;
-
-    setTableProducts((prev) => {
-      const updatedProducts = prev[selectedTable].map((product) =>
-        product.id === productId ? { ...product, quantity } : product,
-      );
-      updateTableTotals(selectedTable, updatedProducts);
-      return { ...prev, [selectedTable]: updatedProducts };
-    });
+    console.log(
+      "handleUpdateQuantity: (productId/quantity)",
+      productId,
+      quantity,
+    );
+    //
+    // setTableProducts((prev) => {
+    //   const updatedProducts = prev[selectedTable].map((product) =>
+    //     product.id === productId ? { ...product, quantity } : product,
+    //   );
+    //   updateTableTotals(selectedTable, updatedProducts);
+    //   return { ...prev, [selectedTable]: updatedProducts };
+    // });
   };
 
   const handleUpdateNotes = (productId: number, notes: string) => {
     if (!selectedTable) return;
+    console.log("handleUpdateNotes: (productId/notes)", productId, notes);
 
-    setTableProducts((prev) => ({
-      ...prev,
-      [selectedTable]: prev[selectedTable].map((product) =>
-        product.id === productId ? { ...product, notes } : product,
-      ),
-    }));
+    // setTableProducts((prev) => ({
+    //   ...prev,
+    //   [selectedTable]: prev[selectedTable].map((product) =>
+    //     product.id === productId ? { ...product, notes } : product,
+    //   ),
+    // }));
   };
 
   const handleRemoveProduct = (productId: number) => {
     if (!selectedTable) return;
+    console.log("handleRemoveProduct: (productId)", productId);
 
-    setTableProducts((prev) => {
-      const removedProduct = prev[selectedTable].find(
-        (product) => product.id === productId,
-      );
-      const updatedProducts = prev[selectedTable].filter(
-        (product) => product.id !== productId,
-      );
-      updateTableTotals(selectedTable, updatedProducts);
-
-      if (removedProduct && !config.disableNotifications) {
-        toast({
-          title: "Producto eliminado",
-          description: `${removedProduct.name} ha sido eliminado del pedido.`,
-          duration: config.notificationDuration,
-          action: (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setTableProducts((prevState) => {
-                  const restoredProducts = [
-                    ...prevState[selectedTable],
-                    { ...removedProduct, id: Date.now() },
-                  ];
-                  updateTableTotals(selectedTable, restoredProducts);
-                  return { ...prevState, [selectedTable]: restoredProducts };
-                });
-                toast({
-                  title: "Producto restaurado",
-                  description: `${removedProduct.name} ha sido restaurado al pedido.`,
-                  duration: config.notificationDuration,
-                });
-              }}
-            >
-              Deshacer
-            </Button>
-          ),
-        });
-      }
-
-      return { ...prev, [selectedTable]: updatedProducts };
-    });
+    // setTableProducts((prev) => {
+    //   const removedProduct = prev[selectedTable].find(
+    //     (product) => product.id === productId,
+    //   );
+    //   const updatedProducts = prev[selectedTable].filter(
+    //     (product) => product.id !== productId,
+    //   );
+    //   updateTableTotals(selectedTable, updatedProducts);
+    //
+    //   if (removedProduct && !config.disableNotifications) {
+    //     toast({
+    //       title: "Producto eliminado",
+    //       description: `${removedProduct.name} ha sido eliminado del pedido.`,
+    //       duration: config.notificationDuration,
+    //       action: (
+    //         <Button
+    //           variant="outline"
+    //           size="sm"
+    //           onClick={() => {
+    //             setTableProducts((prevState) => {
+    //               const restoredProducts = [
+    //                 ...prevState[selectedTable],
+    //                 { ...removedProduct, id: Date.now() },
+    //               ];
+    //               updateTableTotals(selectedTable, restoredProducts);
+    //               return { ...prevState, [selectedTable]: restoredProducts };
+    //             });
+    //             toast({
+    //               title: "Producto restaurado",
+    //               description: `${removedProduct.name} ha sido restaurado al pedido.`,
+    //               duration: config.notificationDuration,
+    //             });
+    //           }}
+    //         >
+    //           Deshacer
+    //         </Button>
+    //       ),
+    //     });
+    //   }
+    //
+    //   return { ...prev, [selectedTable]: updatedProducts };
+    // });
   };
 
   const handleReleaseTable = () => {
@@ -433,32 +295,33 @@ export default function App() {
 
   const confirmReleaseTable = () => {
     if (!selectedTable) return;
+    console.log("confirmReleaseTable: (selectedTable)", selectedTable);
 
-    const tableOrder = tableProducts[selectedTable];
-    if (tableOrder && tableOrder.length > 0) {
-      const newOrder: Order = {
-        id: Date.now(),
-        tableId: selectedTable,
-        products: tableOrder,
-        total: calculateTableTotal(tableOrder),
-        releasedAt: Date.now(),
-      };
-      setOrders((prev) => [...prev, newOrder]);
-    }
-
-    setTableProducts((prev) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { [selectedTable]: _, ...rest } = prev;
-      return rest;
-    });
-
-    setTables((prev) =>
-      prev.map((table) =>
-        table.id === selectedTable
-          ? { ...table, occupied: false, total: 0, unpaidTotal: 0 }
-          : table,
-      ),
-    );
+    // const tableOrder = tableProducts[selectedTable];
+    // if (tableOrder && tableOrder.length > 0) {
+    //   const newOrder: Order = {
+    //     id: Date.now(),
+    //     tableId: selectedTable,
+    //     products: tableOrder,
+    //     total: calculateTableTotal(tableOrder),
+    //     releasedAt: Date.now(),
+    //   };
+    //   setOrders((prev) => [...prev, newOrder]);
+    // }
+    //
+    // setTableProducts((prev) => {
+    //   // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    //   const { [selectedTable]: _, ...rest } = prev;
+    //   return rest;
+    // });
+    //
+    // setTables((prev) =>
+    //   prev.map((table) =>
+    //     table.id === selectedTable
+    //       ? { ...table, occupied: false, total: 0, unpaidTotal: 0 }
+    //       : table,
+    //   ),
+    // );
 
     setSelectedTable(null);
     setIsConfirmationModalOpen(false);
@@ -474,17 +337,18 @@ export default function App() {
 
   const handleTogglePaid = (productId: number) => {
     if (!selectedTable) return;
+    console.log("handleTogglePaid: (productId)", productId);
 
-    setTableProducts((prev) => {
-      const updatedProducts = prev[selectedTable].map((product) => {
-        if (product.id === productId) {
-          return { ...product, paid: !product.paid };
-        }
-        return product;
-      });
-      updateTableTotals(selectedTable, updatedProducts);
-      return { ...prev, [selectedTable]: updatedProducts };
-    });
+    // setTableProducts((prev) => {
+    //   const updatedProducts = prev[selectedTable].map((product) => {
+    //     if (product.id === productId) {
+    //       return { ...product, paid: !product.paid };
+    //     }
+    //     return product;
+    //   });
+    //   updateTableTotals(selectedTable, updatedProducts);
+    //   return { ...prev, [selectedTable]: updatedProducts };
+    // });
   };
 
   const handleLiquidateOrders = () => {
@@ -492,7 +356,6 @@ export default function App() {
   };
 
   const confirmLiquidateOrders = () => {
-    setOrders([]);
     setIsOrderDialogOpen(false);
     setIsLiquidateConfirmationOpen(false);
     if (!config.disableNotifications) {
@@ -504,15 +367,15 @@ export default function App() {
     }
   };
 
-  const getTableColor = (table: Table) => {
-    if (!table.occupied) return "bg-gray-200";
-    if (tableProducts[table.id].some((product) => !product.prepared))
-      return tableProducts[table.id].some(
-        (product) => product.prepared && !product.served,
+  const getTableColor = (table: TableData) => {
+    if (!table.orders || !table.orders.length) return "bg-gray-200";
+    if (table.orders.some((order: OrderData) => !order.prepared))
+      return table.orders.some(
+        (order: OrderData) => order.prepared && !order.served,
       )
         ? "bg-gradient-to-r from-yellow-200 to-blue-200"
         : "bg-yellow-200";
-    if (tableProducts[table.id].some((product) => !product.served))
+    if (table.orders.some((order: OrderData) => !order.served))
       return "bg-blue-200";
     return "bg-green-200";
   };
@@ -522,21 +385,12 @@ export default function App() {
     prepared: boolean,
     served: boolean,
   ) => {
-    setTableProducts((prev) => {
-      const updatedTableProducts: Record<number, Product[]> = {};
-
-      for (const [tableId, products] of Object.entries(prev)) {
-        const updatedProducts = products.map((product) =>
-          product.id === productId
-            ? { ...product, prepared: served ? true : prepared, served }
-            : product,
-        );
-        updatedTableProducts[Number(tableId)] = updatedProducts;
-        updateTableTotals(Number(tableId), updatedProducts);
-      }
-
-      return updatedTableProducts;
-    });
+    console.log(
+      "handleStatusChange: (productId, prepared, served)",
+      productId,
+      prepared,
+      served,
+    );
 
     if (!config.disableNotifications) {
       if (prepared && !served) {
@@ -587,30 +441,53 @@ export default function App() {
     }
   };
 
-  const pendingPreparation = Object.values(tableProducts)
-    .flat()
-    .filter((product) => !product.prepared && !product.alwaysPrepared)
-    .sort((a, b) => (a.tableId || 0) - (b.tableId || 0));
+  const allOrders: OrderData[] = tables.flatMap(({ orders }) => orders);
+  const realisedOrders: OrderData[] = allOrders.filter(
+    (order) => !!order?.releasedAt,
+  );
+  const groupedRealisedOrders = realisedOrders.reduce(
+    (acc, order) => {
+      const { releasedAt } = order;
+      if (!acc[releasedAt]) {
+        acc[releasedAt] = [];
+      }
+      acc[releasedAt].push(order);
+      return acc;
+    },
+    {} as Record<number, OrderData[]>,
+  );
 
-  const pendingService = Object.values(tableProducts)
-    .flat()
-    .filter((product) => product.prepared && !product.served)
-    .sort((a, b) => (a.tableId || 0) - (b.tableId || 0));
+  const isPendingPreparation = (order: OrderData) =>
+    !order.prepared && !order.served;
+
+  const pendingPreparation: OrderData[] = tables.flatMap(({ orders }) =>
+    orders?.filter(isPendingPreparation),
+  );
+
+  const isPendingService = (order: OrderData) =>
+    order.prepared && !order.served;
+
+  const pendingService = tables.flatMap(({ orders }) =>
+    orders?.filter(isPendingService),
+  );
 
   const calculateTotalLiquidation = () => {
-    return orders.reduce((total, order) => total + order.total, 0);
+    return tables?.reduce(
+      (total, table) => total + calculateTotalByOrders(table.orders),
+      0,
+    );
   };
 
-  const normalizeString = (str: string) => {
-    return str
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-  };
-
-  const filteredProducts = initialProducts.filter((product) =>
-    normalizeString(product.name).includes(normalizeString(searchTerm)),
-  );
+  // const normalizeString = (str: string) => {
+  //   return str
+  //     .toLowerCase()
+  //     .normalize("NFD")
+  //     .replace(/[\u0300-\u036f]/g, "");
+  // };
+  //
+  // const filteredProducts = initialProducts.filter((product) =>
+  //   normalizeString(product.name).includes(normalizeString(searchTerm)),
+  // );
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -723,14 +600,17 @@ export default function App() {
                       <Button
                         disabled={
                           pendingPreparation.some(
-                            (p) => p.tableId === numberOfTables,
+                            (order: OrderData) =>
+                              order?.tableId === tables.length,
                           ) ||
                           pendingService.some(
-                            (p) => p.tableId === numberOfTables,
+                            (order: OrderData) =>
+                              order?.tableId === tables.length,
                           )
                         }
                         onClick={() =>
-                          setNumberOfTables((prev) => Math.max(1, prev - 1))
+                          // TODO: pending call delete table
+                          console.log("delete table")
                         }
                       >
                         <Minus className="h-4 w-4" />
@@ -741,15 +621,19 @@ export default function App() {
                           pendingPreparation.length || pendingService.length,
                         )}
                         type="number"
-                        value={numberOfTables}
+                        value={tables.length}
                         onChange={(e) =>
-                          setNumberOfTables(parseInt(e.target.value) || 1)
+                          // TODO
+                          console.log("set tables", e.target.value)
                         }
                         min="1"
                         className="w-20 text-center"
                       />
                       <Button
-                        onClick={() => setNumberOfTables((prev) => prev + 1)}
+                        onClick={() =>
+                          // TODO
+                          console.log("set tables")
+                        }
                       >
                         <Plus className="h-4 w-4" />
                       </Button>
@@ -766,7 +650,7 @@ export default function App() {
                 <Button
                   variant="outline"
                   size="icon"
-                  disabled={orders.length === 0}
+                  disabled={realisedOrders.length === 0}
                 >
                   <ClipboardList className="h-4 w-4" />
                 </Button>
@@ -776,36 +660,41 @@ export default function App() {
                   <DialogTitle>Registro de pedidos</DialogTitle>
                 </DialogHeader>
                 <div className="py-4">
-                  {orders.map((order) => (
-                    <Card key={order.id} className="mb-4">
-                      <CardHeader>
-                        <CardTitle>
-                          Mesa {order.tableId} - Total: {order.total.toFixed(2)}{" "}
-                          €
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-muted-foreground text-sm mb-2">
-                          {new Date(order.releasedAt).toLocaleString()}
-                        </p>
-                        <ul>
-                          {order.products.map((product) => (
-                            <li key={product.id}>
-                              {product.name} x{product.quantity} -{" "}
-                              {(product.price * product.quantity).toFixed(2)} €
-                            </li>
-                          ))}
-                        </ul>
-                      </CardContent>
-                    </Card>
-                  ))}
+                  {Object.entries(groupedRealisedOrders).map(
+                    ([releasedAt, orders]: [string, OrderData[]]) => (
+                      <Card key={releasedAt} className="mb-4">
+                        <CardHeader>
+                          <CardTitle>
+                            Mesa {orders[0].tableNumber} - Total:{" "}
+                            {calculateTotalByOrders(orders).toFixed(2)} €
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-muted-foreground text-sm mb-2">
+                            {new Date(releasedAt).toLocaleString()}
+                          </p>
+                          <ul>
+                            {orders.map((order: OrderData) => (
+                              <li key={order.id}>
+                                {order.product.name} x{order.quantity} -{" "}
+                                {(order.product.price * order.quantity).toFixed(
+                                  2,
+                                )}{" "}
+                                €
+                              </li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    ),
+                  )}
                 </div>
                 <Card className="sticky bottom-2 bg-primary text-primary-foreground flex-grow">
                   <CardContent className="flex justify-between items-center p-4">
                     <CardTitle className="text-xl">TOTAL</CardTitle>
                     <Button
                       onClick={handleLiquidateOrders}
-                      disabled={orders.length === 0}
+                      disabled={realisedOrders.length === 0}
                     >
                       <span className="text-2xl font-bold">
                         {calculateTotalLiquidation().toFixed(2)} €
@@ -822,8 +711,12 @@ export default function App() {
           {selectedTable ? (
             <TableDetail
               tableId={selectedTable}
-              products={tableProducts[selectedTable] || []}
-              availableProducts={initialProducts}
+              orders={
+                tables
+                  .find((table) => table.number === selectedTable)
+                  ?.orders.filter((order) => !order.releasedAt) || []
+              }
+              availableProducts={products}
               onAddProduct={handleAddProduct}
               onUpdateStatus={handleUpdateStatus}
               onUpdateQuantity={handleUpdateQuantity}
@@ -832,7 +725,9 @@ export default function App() {
               onReleaseTable={handleReleaseTable}
               onTogglePaid={handleTogglePaid}
               unpaidTotal={
-                tables.find((t) => t.id === selectedTable)?.unpaidTotal || 0
+                calculateUnpaidTotalByOrders(
+                  tables.find((t) => t.number === selectedTable)?.orders || [],
+                ) || 0
               }
             >
               <div className="mb-4">
@@ -850,7 +745,7 @@ export default function App() {
                 </div>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {filteredProducts.map((product) => (
+                {products.map((product) => (
                   <Button
                     key={product.id}
                     onClick={() => handleAddProduct(product.id)}
@@ -866,6 +761,7 @@ export default function App() {
               tables={tables}
               onTableSelect={setSelectedTable}
               getTableColor={getTableColor}
+              calculateTableUnpaidTotal={calculateUnpaidTotalByOrders}
             />
           )}
         </TabsContent>
@@ -876,43 +772,46 @@ export default function App() {
               <CardTitle>Pendiente de preparar</CardTitle>
             </CardHeader>
             <CardContent>
-              {pendingPreparation.map((product) => (
-                <div
-                  key={product.id}
-                  className="mb-2 p-2 border rounded transition-opacity duration-300"
-                  style={{ opacity: product.prepared ? 0.5 : 1 }}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="flex-1 space-x-2">
-                      {product.quantity > 1 && (
+              {pendingPreparation.map(
+                (order: OrderData) =>
+                  order && (
+                    <div
+                      key={order.id}
+                      className="mb-2 p-2 border rounded transition-opacity duration-300"
+                      style={{ opacity: order.prepared ? 0.5 : 1 }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="flex-1 space-x-2">
+                          {order.quantity > 1 && (
+                            <span className="text-muted-foreground">
+                              {order.quantity} x
+                            </span>
+                          )}
+                          <strong>{order.product.name}</strong>
+                        </span>
+                        <span className="text-muted-foreground mr-2">
+                          Mesa {order.tableId}
+                        </span>
+                        <Checkbox
+                          checked={order.prepared}
+                          onCheckedChange={(checked) =>
+                            handleStatusChange(
+                              order.id,
+                              checked as boolean,
+                              order.served,
+                            )
+                          }
+                          disabled={order.product.alwaysPrepared}
+                        />
+                      </div>
+                      {order.notes && (
                         <span className="text-muted-foreground">
-                          {product.quantity} x
+                          Notas: {order.notes}
                         </span>
                       )}
-                      <strong>{product.name}</strong>
-                    </span>
-                    <span className="text-muted-foreground mr-2">
-                      Mesa {product.tableId}
-                    </span>
-                    <Checkbox
-                      checked={product.prepared}
-                      onCheckedChange={(checked) =>
-                        handleStatusChange(
-                          product.id,
-                          checked as boolean,
-                          product.served,
-                        )
-                      }
-                      disabled={product.alwaysPrepared}
-                    />
-                  </div>
-                  {product.notes && (
-                    <span className="text-muted-foreground">
-                      Notas: {product.notes}
-                    </span>
-                  )}
-                </div>
-              ))}
+                    </div>
+                  ),
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -923,42 +822,45 @@ export default function App() {
               <CardTitle>Pendiente de servir</CardTitle>
             </CardHeader>
             <CardContent>
-              {pendingService.map((product) => (
-                <div
-                  key={product.id}
-                  className="mb-2 p-2 border rounded transition-opacity duration-300"
-                  style={{ opacity: product.served ? 0.5 : 1 }}
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="flex-1 space-x-2">
-                      {product.quantity > 1 && (
+              {pendingService.map(
+                (order: OrderData) =>
+                  order && (
+                    <div
+                      key={order.id}
+                      className="mb-2 p-2 border rounded transition-opacity duration-300"
+                      style={{ opacity: order.served ? 0.5 : 1 }}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="flex-1 space-x-2">
+                          {order.quantity > 1 && (
+                            <span className="text-muted-foreground">
+                              {order.quantity} x
+                            </span>
+                          )}
+                          <strong>{order.product.name}</strong>
+                        </span>
+                        <span className="text-muted-foreground mr-2">
+                          Mesa {order.tableId}
+                        </span>
+                        <Checkbox
+                          checked={order.served}
+                          onCheckedChange={(checked) =>
+                            handleStatusChange(
+                              order.id,
+                              order.prepared,
+                              checked as boolean,
+                            )
+                          }
+                        />
+                      </div>
+                      {order.notes && (
                         <span className="text-muted-foreground">
-                          {product.quantity} x
+                          Notas: {order.notes}
                         </span>
                       )}
-                      <strong>{product.name}</strong>
-                    </span>
-                    <span className="text-muted-foreground mr-2">
-                      Mesa {product.tableId}
-                    </span>
-                    <Checkbox
-                      checked={product.served}
-                      onCheckedChange={(checked) =>
-                        handleStatusChange(
-                          product.id,
-                          product.prepared,
-                          checked as boolean,
-                        )
-                      }
-                    />
-                  </div>
-                  {product.notes && (
-                    <span className="text-muted-foreground">
-                      Notas: {product.notes}
-                    </span>
-                  )}
-                </div>
-              ))}
+                    </div>
+                  ),
+              )}
             </CardContent>
           </Card>
         </TabsContent>

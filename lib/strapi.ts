@@ -41,12 +41,24 @@ export interface CategoryData {
   products: ProductData[];
 }
 
+export async function getCategories(): Promise<PageableResponse<CategoryData>> {
+  return query("categories").then((res: PageableResponse<CategoryData>) => res);
+}
+
 // SUBCATEGORY
 
 export interface SubcategoryData {
   id: number;
   name: string;
   products: ProductData[];
+}
+
+export async function getSubcategories(): Promise<
+  PageableResponse<SubcategoryData>
+> {
+  return query("subcategories").then(
+    (res: PageableResponse<SubcategoryData>) => res,
+  );
 }
 
 // PRODUCT
@@ -60,9 +72,13 @@ export interface ProductData {
   subcategory: SubcategoryData;
 }
 
+export async function getProducts(): Promise<PageableResponse<ProductData>> {
+  return query("products").then((res: PageableResponse<ProductData>) => res);
+}
+
 // PRODUCT ORDER
 
-export interface ProductOrderData {
+export interface OrderData {
   id: number;
   quantity: number;
   prepared: boolean;
@@ -71,15 +87,26 @@ export interface ProductOrderData {
   product: ProductData;
   notes: string;
   orderId: number;
-}
-
-// ORDER
-
-export interface OrderData {
-  id: number;
   releasedAt: number;
   tableId: number;
-  product_orders: ProductOrderData[];
+  tableNumber: number;
+}
+
+interface OrderStrapiData extends Omit<OrderData, "tableId" | "tableNumber"> {
+  table: TableData;
+}
+
+export async function getOrders(): Promise<PageableResponse<OrderData>> {
+  return query("orders").then((res: PageableResponse<OrderStrapiData>) => {
+    return {
+      ...res,
+      data: res.data.map((order) => ({
+        ...order,
+        tableId: order.table.id,
+        tableNumber: order.table.number,
+      })),
+    };
+  });
 }
 
 // TABLE
@@ -90,8 +117,24 @@ export interface TableData {
   orders: OrderData[];
 }
 
+interface TableStrapiData extends Omit<TableData, "orders"> {
+  orders: OrderStrapiData[];
+}
+
 export async function getTables(): Promise<PageableResponse<TableData>> {
-  return query("tables").then((res: PageableResponse<TableData>) => res);
+  return query("tables").then((res: PageableResponse<TableStrapiData>) => {   
+    return {
+      ...res,
+      data: res.data.map((table) => ({
+        ...table,
+        orders: table.orders?.map((order) => ({
+          ...order,
+          tableId: order.table.id,
+          tableNumber: order.table.number,
+        })),
+      })),
+    };
+  });  
 }
 
 export async function getTableById(id: number): Promise<Response<TableData>> {

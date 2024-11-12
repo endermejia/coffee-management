@@ -21,26 +21,13 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { FileText } from "lucide-react";
-
-interface Product {
-  id: number;
-  name: string;
-  price: number;
-  prepared: boolean;
-  served: boolean;
-  quantity: number;
-  notes: string;
-  category: "bebida" | "comida";
-  subcategory: string;
-  paid?: boolean;
-  alwaysPrepared?: boolean;
-}
+import { OrderData, ProductData } from "@/lib/strapi";
 
 interface TableDetailProps {
   children: React.ReactNode;
   tableId: number;
-  products: Product[];
-  availableProducts: Product[];
+  orders: OrderData[];
+  availableProducts: ProductData[];
   onAddProduct: (productId: number) => void;
   onUpdateStatus: (
     productId: number,
@@ -68,7 +55,7 @@ const quickNotes = [
 
 export default function TableDetail({
   tableId,
-  products,
+  orders,
   availableProducts,
   onAddProduct,
   onUpdateStatus,
@@ -90,33 +77,33 @@ export default function TableDetail({
     return "bg-yellow-200";
   };
 
-  const handleQuantityChange = (product: Product, newQuantity: number) => {
-    if (product.paid) return;
+  const handleQuantityChange = (order: OrderData, newQuantity: number) => {
+    if (order.paid) return;
 
     if (newQuantity === 0) {
-      onRemoveProduct(product.id);
+      onRemoveProduct(order.id);
       toast({
         title: "Producto eliminado",
-        description: `${product.name} ha sido eliminado del pedido.`,
+        description: `${order.product.name} ha sido eliminado del pedido.`,
         duration: 3000,
         action: (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => onAddProduct(product.id)}
+            onClick={() => onAddProduct(order.id)}
           >
             Deshacer
           </Button>
         ),
       });
     } else {
-      onUpdateQuantity(product.id, newQuantity);
+      onUpdateQuantity(order.product.id, newQuantity);
     }
   };
 
   const handleAddNote = (productId: number) => {
     setNoteProductId(productId);
-    const product = products.find((p) => p.id === productId);
+    const product = orders.find((p) => p.id === productId);
     setNoteText(product?.notes || "");
   };
 
@@ -132,18 +119,24 @@ export default function TableDetail({
     setNoteText((prev) => (prev ? `${prev}, ${note}` : note));
   };
 
-  const groupedAvailableProducts = availableProducts.reduce(
-    (acc, product) => {
-      if (!acc[product.category]) {
-        acc[product.category] = {};
+  const groupedAvailableProducts: Record<
+    string,
+    Record<string, ProductData[]>
+  > = availableProducts.reduce(
+    (
+      acc: Record<string, Record<string, ProductData[]>>,
+      product: ProductData,
+    ) => {
+      if (!acc[product.category.name]) {
+        acc[product.category.name] = {};
       }
-      if (!acc[product.category][product.subcategory]) {
-        acc[product.category][product.subcategory] = [];
+      if (!acc[product.category.name][product.subcategory.name]) {
+        acc[product.category.name][product.subcategory.name] = [];
       }
-      acc[product.category][product.subcategory].push(product);
+      acc[product.category.name][product.subcategory.name].push(product);
       return acc;
     },
-    {} as Record<string, Record<string, Product[]>>,
+    {} as Record<string, Record<string, ProductData[]>>,
   );
 
   return (
@@ -224,93 +217,93 @@ export default function TableDetail({
           </Tabs>
         </CardContent>
       </Card>
-      {products.length > 0 && (
+      {orders.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">PRODUCTOS PEDIDOS</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {products.map((product) => (
+              {orders.map((order: OrderData) => (
                 <Card
-                  key={product.id}
-                  className={`${getStatusColor(product.prepared, product.served)} p-4`}
+                  key={order.id}
+                  className={`${getStatusColor(order.prepared, order.served)} p-4`}
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                     <div className="flex-1 mb-2 sm:mb-0">
                       <h3
-                        className={`font-semibold cursor-pointer ${product.paid ? "line-through text-gray-500" : ""}`}
-                        onClick={() => onTogglePaid(product.id)}
+                        className={`font-semibold cursor-pointer ${order.paid ? "line-through text-gray-500" : ""}`}
+                        onClick={() => onTogglePaid(order.id)}
                       >
-                        {product.name}{" "}
-                        {product.quantity > 1
-                          ? `(${product.price.toFixed(2)} € x ${product.quantity} = ${(product.price * product.quantity).toFixed(2)} €)`
-                          : `${product.price.toFixed(2)} €`}
+                        {order.product.name}{" "}
+                        {order.quantity > 1
+                          ? `(${order.product.price.toFixed(2)} € x ${order.quantity} = ${(order.product.price * order.quantity).toFixed(2)} €)`
+                          : `${order.product.price.toFixed(2)} €`}
                       </h3>
                     </div>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
                       <div className="flex items-center space-x-2">
                         <Button
                           onClick={() =>
-                            handleQuantityChange(product, product.quantity - 1)
+                            handleQuantityChange(order, order.quantity - 1)
                           }
                           variant="outline"
                           size="icon"
                           disabled={
-                            product.paid ||
-                            (!product.alwaysPrepared &&
-                              (product.prepared || product.served))
+                            order.paid ||
+                            (!order.product.alwaysPrepared &&
+                              (order.prepared || order.served))
                           }
                         >
                           -
                         </Button>
                         <Input
                           type="number"
-                          value={product.quantity}
+                          value={order.quantity}
                           onChange={(e) =>
                             handleQuantityChange(
-                              product,
+                              order,
                               parseInt(e.target.value) || 0,
                             )
                           }
                           className="w-16 text-center"
                           disabled={
-                            product.paid ||
-                            (!product.alwaysPrepared &&
-                              (product.prepared || product.served))
+                            order.paid ||
+                            (!order.product.alwaysPrepared &&
+                              (order.prepared || order.served))
                           }
                         />
                         <Button
                           onClick={() =>
-                            handleQuantityChange(product, product.quantity + 1)
+                            handleQuantityChange(order, order.quantity + 1)
                           }
                           variant="outline"
                           size="icon"
                           disabled={
-                            product.paid ||
-                            (!product.alwaysPrepared &&
-                              (product.prepared || product.served))
+                            order.paid ||
+                            (!order.product.alwaysPrepared &&
+                              (order.prepared || order.served))
                           }
                         >
                           +
                         </Button>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {!product.alwaysPrepared && (
+                        {!order.product.alwaysPrepared && (
                           <div className="flex flex-col items-center">
                             <Checkbox
-                              id={`prepared-${product.id}`}
-                              checked={product.prepared}
+                              id={`prepared-${order.id}`}
+                              checked={order.prepared}
                               onCheckedChange={(checked) =>
                                 onUpdateStatus(
-                                  product.id,
+                                  order.id,
                                   checked as boolean,
-                                  product.served,
+                                  order.served,
                                 )
                               }
                             />
                             <label
-                              htmlFor={`prepared-${product.id}`}
+                              htmlFor={`prepared-${order.id}`}
                               className="text-xs"
                             >
                               Prep
@@ -319,21 +312,21 @@ export default function TableDetail({
                         )}
                         <div className="flex flex-col items-center">
                           <Checkbox
-                            id={`served-${product.id}`}
-                            checked={product.served}
+                            id={`served-${order.id}`}
+                            checked={order.served}
                             onCheckedChange={(checked) =>
                               onUpdateStatus(
-                                product.id,
-                                product.prepared,
+                                order.id,
+                                order.prepared,
                                 checked as boolean,
                               )
                             }
                             disabled={
-                              !product.prepared && !product.alwaysPrepared
+                              !order.prepared && !order.product.alwaysPrepared
                             }
                           />
                           <label
-                            htmlFor={`served-${product.id}`}
+                            htmlFor={`served-${order.id}`}
                             className="text-xs"
                           >
                             Serv
@@ -343,17 +336,15 @@ export default function TableDetail({
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleAddNote(product.id)}
+                        onClick={() => handleAddNote(order.id)}
                       >
                         <FileText className="h-4 w-4 mr-2" />
                         Nota
                       </Button>
                     </div>
                   </div>
-                  {product.notes && (
-                    <p className="mt-2 text-sm text-gray-600">
-                      {product.notes}
-                    </p>
+                  {order.notes && (
+                    <p className="mt-2 text-sm text-gray-600">{order.notes}</p>
                   )}
                 </Card>
               ))}

@@ -21,11 +21,25 @@
       "target": "api::table.table",
       "inversedBy": "orders"
     },
-    "product_orders": {
+    "quantity": {
+      "type": "integer"
+    },
+    "prepared": {
+      "type": "boolean"
+    },
+    "served": {
+      "type": "boolean"
+    },
+    "notes": {
+      "type": "text"
+    },
+    "paid": {
+      "type": "boolean"
+    },
+    "product": {
       "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::product-order.product-order",
-      "mappedBy": "order"
+      "relation": "oneToOne",
+      "target": "api::product.product"
     }
   }
 }

@@ -584,10 +584,12 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
   attributes: {
     releasedAt: Schema.Attribute.BigInteger;
     table: Schema.Attribute.Relation<'manyToOne', 'api::table.table'>;
-    product_orders: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::product-order.product-order'
-    >;
+    quantity: Schema.Attribute.Integer;
+    prepared: Schema.Attribute.Boolean;
+    served: Schema.Attribute.Boolean;
+    notes: Schema.Attribute.Text;
+    paid: Schema.Attribute.Boolean;
+    product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
     createdAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
@@ -636,43 +638,6 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::product.product'
-    >;
-  };
-}
-
-export interface ApiProductOrderProductOrder
-  extends Struct.CollectionTypeSchema {
-  collectionName: 'product_orders';
-  info: {
-    singularName: 'product-order';
-    pluralName: 'product-orders';
-    displayName: 'Product Order';
-    description: '';
-  };
-  options: {
-    draftAndPublish: true;
-  };
-  attributes: {
-    quantity: Schema.Attribute.Integer &
-      Schema.Attribute.Required &
-      Schema.Attribute.DefaultTo<1>;
-    prepared: Schema.Attribute.Boolean;
-    served: Schema.Attribute.Boolean;
-    product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
-    notes: Schema.Attribute.Text;
-    paid: Schema.Attribute.Boolean;
-    order: Schema.Attribute.Relation<'manyToOne', 'api::order.order'>;
-    createdAt: Schema.Attribute.DateTime;
-    updatedAt: Schema.Attribute.DateTime;
-    publishedAt: Schema.Attribute.DateTime;
-    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
-      Schema.Attribute.Private;
-    locale: Schema.Attribute.String;
-    localizations: Schema.Attribute.Relation<
-      'oneToMany',
-      'api::product-order.product-order'
     >;
   };
 }
@@ -1120,7 +1085,6 @@ declare module '@strapi/strapi' {
       'api::global.global': ApiGlobalGlobal;
       'api::order.order': ApiOrderOrder;
       'api::product.product': ApiProductProduct;
-      'api::product-order.product-order': ApiProductOrderProductOrder;
       'api::subcategory.subcategory': ApiSubcategorySubcategory;
       'api::table.table': ApiTableTable;
       'admin::permission': AdminPermission;
