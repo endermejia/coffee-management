@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { FileText } from "lucide-react";
-import {OrderData, ProductData, TableData} from "@/lib/strapi";
+import { OrderData, ProductData, TableData } from "@/lib/strapi";
 
 interface TableDetailProps {
   children: React.ReactNode;
@@ -29,11 +29,7 @@ interface TableDetailProps {
   orders: OrderData[];
   availableProducts: ProductData[];
   onAddProduct: (product: ProductData) => void;
-  onUpdateStatus: (
-    orderId: number,
-    prepared: boolean,
-    served: boolean,
-  ) => void;
+  onUpdateStatus: (orderId: number, prepared: boolean, served: boolean) => void;
   onUpdateQuantity: (orderId: number, quantity: number) => void;
   onUpdateNotes: (orderId: number, notes: string) => void;
   onRemoveOrder: (orderId: number) => void;
@@ -126,13 +122,13 @@ export default function TableDetail({
       acc: Record<string, Record<string, ProductData[]>>,
       product: ProductData,
     ) => {
-      if (!acc[product.category.name]) {
-        acc[product.category.name] = {};
+      if (!acc[product.category?.name]) {
+        acc[product.category?.name] = {};
       }
-      if (!acc[product.category.name][product.subcategory.name]) {
-        acc[product.category.name][product.subcategory.name] = [];
+      if (!acc[product.category?.name][product.subcategory?.name]) {
+        acc[product.category?.name][product.subcategory?.name] = [];
       }
-      acc[product.category.name][product.subcategory.name].push(product);
+      acc[product.category?.name][product.subcategory?.name].push(product);
       return acc;
     },
     {} as Record<string, Record<string, ProductData[]>>,

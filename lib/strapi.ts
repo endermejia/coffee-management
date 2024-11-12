@@ -2,12 +2,12 @@
 
 const { STRAPI_HOST, STRAPI_TOKEN } = process.env;
 
-async function query(url: string, method: string = 'GET', body?: unknown) {
+async function query(url: string, method: string = "GET", body?: unknown) {
   const options: RequestInit = {
     method,
     headers: {
       Authorization: `Bearer ${STRAPI_TOKEN}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
   };
 
@@ -121,16 +121,21 @@ export async function getOrders(): Promise<PageableResponse<OrderData>> {
   });
 }
 
-export async function createOrder(orderData: Omit<OrderData, 'id'>): Promise<Response<OrderData>> {
-  return query('orders', 'POST', orderData);
+export async function createOrder(
+  orderData: Omit<OrderData, "id">,
+): Promise<Response<OrderData>> {
+  return query("orders", "POST", orderData);
 }
 
-export async function updateOrder(id: number, orderData: Partial<OrderData>): Promise<Response<OrderData>> {
-  return query(`orders/${id}`, 'PUT', orderData);
+export async function updateOrder(
+  id: number,
+  orderData: Partial<OrderData>,
+): Promise<Response<OrderData>> {
+  return query(`orders/${id}`, "PUT", orderData);
 }
 
 export async function deleteOrder(id: number): Promise<Response<OrderData>> {
-  return query(`orders/${id}`, 'DELETE');
+  return query(`orders/${id}`, "DELETE");
 }
 
 // TABLE
@@ -161,14 +166,19 @@ export async function getTables(): Promise<PageableResponse<TableData>> {
   });
 }
 
-export async function createTable(tableData: Omit<TableData, 'id'>): Promise<Response<TableData>> {
-  return query('tables', 'POST', tableData);
+export async function createTable(
+  tableData: Omit<TableData, "id">,
+): Promise<Response<TableData>> {
+  return query("tables", "POST", tableData);
 }
 
-export async function updateTable(id: number, tableData: Partial<TableData>): Promise<Response<TableData>> {
-  return query(`tables/${id}`, 'PUT', tableData);
+export async function updateTable(
+  id: number,
+  tableData: Partial<TableData>,
+): Promise<Response<TableData>> {
+  return query(`tables/${id}`, "PUT", tableData);
 }
 
 export async function deleteTable(id: number): Promise<Response<TableData>> {
-  return query(`tables/${id}`, 'DELETE');
+  return query(`tables/${id}`, "DELETE");
 }

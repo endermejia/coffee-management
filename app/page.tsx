@@ -172,7 +172,7 @@ export default function App() {
 
       const response = await createOrder(newOrder);
       if (response.data) {
-           console.log('PRODUCTO AÑADIDO:', response.data);
+        console.log("PRODUCTO AÑADIDO:", response.data);
       }
     } catch (error) {
       console.error("Error adding product:", error);
@@ -195,7 +195,7 @@ export default function App() {
     try {
       const response = await updateOrder(orderId, { prepared, served });
       if (response.data) {
-        console.log('PRODUCTO ACTUALIZADO:', response.data);
+        console.log("PRODUCTO ACTUALIZADO:", response.data);
 
         if (!config.disableNotifications) {
           if (prepared && !served) {
@@ -521,9 +521,7 @@ export default function App() {
   };
 
   const allOrders: OrderData[] = tables.flatMap(({ orders }) => orders);
-  const realisedOrders: OrderData[] = allOrders.filter(
-    (order) => !!order?.releasedAt,
-  );
+  const realisedOrders = allOrders.filter((order) => order?.releasedAt);
   const groupedRealisedOrders = realisedOrders.reduce(
     (acc, order) => {
       const { releasedAt } = order;
@@ -536,18 +534,26 @@ export default function App() {
     {} as Record<number, OrderData[]>,
   );
 
-  const isPendingPreparation = (order: OrderData) =>
-    !order.prepared && !order.served;
+  const isPendingPreparation = (order: OrderData | undefined): boolean => {
+    if (!order) return false;
+    return !order.prepared && !order.served && !order.releasedAt;
+  };
 
-  const pendingPreparation: OrderData[] = tables.flatMap(({ orders }) =>
-    orders?.filter(isPendingPreparation),
+  const pendingPreparation: OrderData[] = allOrders.filter(
+    (order): order is OrderData => {
+      return order !== undefined && isPendingPreparation(order);
+    },
   );
 
-  const isPendingService = (order: OrderData) =>
-    order.prepared && !order.served;
+  const isPendingService = (order: OrderData | undefined): boolean => {
+    if (!order) return false;
+    return order.prepared && !order.served && !order.releasedAt;
+  };
 
-  const pendingService = tables.flatMap(({ orders }) =>
-    orders?.filter(isPendingService),
+  const pendingService: OrderData[] = allOrders.filter(
+    (order): order is OrderData => {
+      return order !== undefined && isPendingService(order);
+    },
   );
 
   const calculateTotalLiquidation = () => {
@@ -787,9 +793,7 @@ export default function App() {
             <TableDetail
               table={selectedTable}
               orders={
-                tables
-                  .find((table) => table.id === selectedTable.id)
-                  ?.orders.filter((order) => !order.releasedAt) || []
+                selectedTable.orders?.filter((order) => !order.releasedAt) || []
               }
               availableProducts={products}
               onAddProduct={handleAddProduct}
