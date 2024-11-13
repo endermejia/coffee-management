@@ -15,14 +15,53 @@ async function query(url: string, method: string = "GET", body?: unknown) {
     options.body = JSON.stringify({ data: body });
   }
 
-  const response = await fetch(`${STRAPI_HOST}/api/${url}`, options);
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    const response: Response = await fetch(
+      `${STRAPI_HOST}/api/${url}`,
+      options,
+    );
+
+    if (!response.ok) {
+      const errorDetails = await response.json().catch(() => ({
+        message: `HTTP error! status: ${response.status}`,
+      }));
+      return {
+        data: [],
+        error: {
+          details: {
+            message:
+              errorDetails.error?.message ||
+              `HTTP error! status: ${response.status}`,
+            name: errorDetails.error?.name || "RequestError",
+            status: response.status,
+          },
+        },
+      };
+    }
+
+    // Verificar que el contenido sea JSON y que no esté vacío
+    const contentType = response.headers.get("Content-Type") || "";
+    if (contentType.includes("application/json")) {
+      return response.json();
+    }
+
+    // Devolver un objeto vacío si no hay JSON en la respuesta
+    return { data: [] };
+  } catch (error) {
+    return {
+      data: [],
+      error: {
+        details: {
+          message: (error as Error).message,
+          name: "FetchError",
+          status: 500,
+        },
+      },
+    };
   }
-  return response.json();
 }
 
-export interface Response<T> {
+export interface ResponseStrapi<T> {
   data: T[];
   error?: {
     details: {
@@ -33,7 +72,7 @@ export interface Response<T> {
   };
 }
 
-export interface PageableResponse<T> {
+export interface PageableResponseStrapi<T> {
   data: T[];
   meta: {
     pagination: {
@@ -72,9 +111,11 @@ export interface ProductData {
   subcategory: SubcategoryData;
 }
 
-export async function getProducts(): Promise<PageableResponse<ProductData>> {
+export async function getProducts(): Promise<
+  PageableResponseStrapi<ProductData>
+> {
   return query("products?populate[0]=category&populate[1]=subcategory").then(
-    (res: PageableResponse<ProductData>) => res,
+    (res: PageableResponseStrapi<ProductData>) => res,
   );
 }
 
@@ -82,6 +123,7 @@ export async function getProducts(): Promise<PageableResponse<ProductData>> {
 
 export interface OrderData {
   id: number;
+  documentId: string;
   quantity: number;
   prepared: boolean;
   served: boolean;
@@ -98,22 +140,27 @@ interface OrderStrapiData extends Omit<OrderData, "tableId" | "tableNumber"> {
 }
 
 export async function createOrder(
-  orderData: Omit<OrderData, "id" | "tableId" | "tableNumber" | "product"> & {
+  orderData: Omit<
+    OrderData,
+    "id" | "documentId" | "tableId" | "tableNumber" | "product"
+  > & {
     table: number;
     product: number;
   },
-): Promise<Response<OrderData>> {
+): Promise<ResponseStrapi<OrderData>> {
   return query("orders", "POST", orderData);
 }
 
 export async function updateOrder(
   id: number,
   orderData: Partial<OrderData>,
-): Promise<Response<OrderData>> {
+): Promise<ResponseStrapi<OrderData>> {
   return query(`orders/${id}`, "PUT", orderData);
 }
 
-export async function deleteOrder(id: number): Promise<Response<OrderData>> {
+export async function deleteOrder(
+  id: number,
+): Promise<ResponseStrapi<OrderData>> {
   return query(`orders/${id}`, "DELETE");
 }
 
@@ -121,6 +168,7 @@ export async function deleteOrder(id: number): Promise<Response<OrderData>> {
 
 export interface TableData {
   id: number;
+  documentId: string;
   number: number;
   orders: OrderData[];
 }
@@ -129,35 +177,32 @@ interface TableStrapiData extends Omit<TableData, "orders"> {
   orders: OrderStrapiData[];
 }
 
-export async function getTables(): Promise<PageableResponse<TableData>> {
-  return query("tables").then((res: PageableResponse<TableStrapiData>) => {
-    return {
-      ...res,
-      data: res.data.map((table) => ({
-        ...table,
-        orders: table.orders?.map((order) => ({
-          ...order,
-          tableId: order.table.id,
-          tableNumber: order.table.number,
+export async function getTables(): Promise<PageableResponseStrapi<TableData>> {
+  return query("tables?populate[orders][populate][0]=product").then(
+    (res: PageableResponseStrapi<TableStrapiData>) => {
+      return {
+        ...res,
+        data: res.data.map((table) => ({
+          ...table,
+          orders: table.orders?.map((order) => ({
+            ...order,
+            tableId: table.id,
+            tableNumber: table.number,
+          })),
         })),
-      })),
-    };
-  });
+      };
+    },
+  );
 }
 
 export async function createTable(
-  tableData: Omit<TableData, "id">,
-): Promise<Response<TableData>> {
+  tableData: Omit<TableData, "id" | "documentId">,
+): Promise<ResponseStrapi<TableData>> {
   return query("tables", "POST", tableData);
 }
 
-export async function updateTable(
-  id: number,
-  tableData: Partial<TableData>,
-): Promise<Response<TableData>> {
-  return query(`tables/${id}`, "PUT", tableData);
-}
-
-export async function deleteTable(id: number): Promise<Response<TableData>> {
-  return query(`tables/${id}`, "DELETE");
+export async function deleteTable(
+  documentId: string,
+): Promise<ResponseStrapi<TableData>> {
+  return query(`tables/${documentId}`, "DELETE");
 }

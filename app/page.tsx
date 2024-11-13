@@ -34,7 +34,9 @@ import TableDetail from "../components/TableDetail";
 import ConfirmationModal from "../components/ConfirmationModal";
 import {
   createOrder,
+  createTable,
   deleteOrder,
+  deleteTable,
   getProducts,
   getTables,
   OrderData,
@@ -71,24 +73,24 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("tables");
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchTables = async () => {
-      try {
-        const tablesData = await getTables();
-        if (tablesData && tablesData.data) {
-          console.log(tablesData);
-          setTables(tablesData.data.sort((a, b) => a.number - b.number));
-        }
-      } catch (error) {
-        console.error("Error fetching tables:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch tables from Strapi",
-          duration: 3000,
-          variant: "destructive",
-        });
+  const fetchTables = async () => {
+    try {
+      const tablesData = await getTables();
+      if (tablesData && tablesData.data) {
+        console.log("TABLES:", tablesData.data);
+        setTables(tablesData.data.sort((a, b) => a.number - b.number));
       }
-    };
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to fetch tables from Strapi",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
+  };
+
+  useEffect(() => {
     fetchTables();
   }, [toast]);
 
@@ -98,11 +100,10 @@ export default function App() {
         const productsData = await getProducts();
 
         if (productsData && productsData.data) {
-          console.log(productsData);
+          console.log("PRODUCTS:", productsData.data);
           setProducts(productsData.data);
         }
-      } catch (error) {
-        console.error("Error fetching products:", error);
+      } catch {
         toast({
           title: "Error",
           description: "Failed to fetch products from Strapi",
@@ -159,7 +160,7 @@ export default function App() {
     try {
       const createOrderRequest: Omit<
         OrderData,
-        "id" | "tableId" | "tableNumber" | "product"
+        "id" | "documentId" | "tableId" | "tableNumber" | "product"
       > & {
         table: number;
         product: number;
@@ -469,6 +470,46 @@ export default function App() {
     setIsLiquidateConfirmationOpen(true);
   };
 
+  const handleAddTable = async () => {
+    const newTable: Omit<TableData, "id" | "documentId"> = {
+      number: tables.length + 1,
+      orders: [],
+    };
+
+    try {
+      const response = await createTable(newTable);
+      if (response.data) {
+        await fetchTables(); // Actualiza la lista de mesas
+      }
+    } catch (error) {
+      console.error("Error adding table:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add table",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteTable = async () => {
+    const lastTable = tables[tables.length - 1];
+    if (!lastTable) return;
+
+    try {
+      await deleteTable(lastTable.documentId);
+      await fetchTables();
+    } catch (error) {
+      console.error("Error deleting table:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete table",
+        duration: 3000,
+        variant: "destructive",
+      });
+    }
+  };
+
   const confirmLiquidateOrders = () => {
     setIsOrderDialogOpen(false);
     setIsLiquidateConfirmationOpen(false);
@@ -598,17 +639,6 @@ export default function App() {
     );
   };
 
-  // const normalizeString = (str: string) => {
-  //   return str
-  //     .toLowerCase()
-  //     .normalize("NFD")
-  //     .replace(/[\u0300-\u036f]/g, "");
-  // };
-  //
-  // const filteredProducts = initialProducts.filter((product) =>
-  //   normalizeString(product.name).includes(normalizeString(searchTerm)),
-  // );
-
   const handleTabChange = (value: string) => {
     setActiveTab(value);
   };
@@ -717,40 +747,25 @@ export default function App() {
                         disabled={
                           pendingPreparation.some(
                             (order: OrderData) =>
-                              order?.tableId === tables.length,
+                              order?.tableId === tables[tables.length - 1].id,
                           ) ||
                           pendingService.some(
                             (order: OrderData) =>
-                              order?.tableId === tables.length,
+                              order?.tableId === tables[tables.length - 1].id,
                           )
                         }
-                        onClick={() =>
-                          // TODO: pending call delete table
-                          console.log("delete table")
-                        }
+                        onClick={handleDeleteTable}
                       >
                         <Minus className="h-4 w-4" />
                       </Button>
                       <Input
                         id="num-tables"
-                        disabled={Boolean(
-                          pendingPreparation.length || pendingService.length,
-                        )}
+                        disabled
                         type="number"
                         value={tables.length}
-                        onChange={(e) =>
-                          // TODO
-                          console.log("set tables", e.target.value)
-                        }
-                        min="1"
                         className="w-20 text-center"
                       />
-                      <Button
-                        onClick={() =>
-                          // TODO
-                          console.log("set tables")
-                        }
-                      >
+                      <Button onClick={handleAddTable}>
                         <Plus className="h-4 w-4" />
                       </Button>
                     </div>
