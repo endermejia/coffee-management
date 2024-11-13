@@ -597,7 +597,7 @@ export default function App() {
   };
 
   const allOrders: OrderData[] = tables.flatMap(({ orders }) => orders);
-  const realisedOrders = allOrders.filter((order) => order?.releasedAt);
+  const realisedOrders = allOrders.filter((order) => Number(order?.releasedAt));
   const groupedRealisedOrders = realisedOrders.reduce(
     (acc, order) => {
       const { releasedAt } = order;
@@ -612,7 +612,7 @@ export default function App() {
 
   const isPendingPreparation = (order: OrderData | undefined): boolean => {
     if (!order) return false;
-    return !order.prepared && !order.served && !order.releasedAt;
+    return !order.prepared && !order.served && !Number(order.releasedAt);
   };
 
   const pendingPreparation: OrderData[] = allOrders.filter(
@@ -623,7 +623,7 @@ export default function App() {
 
   const isPendingService = (order: OrderData | undefined): boolean => {
     if (!order) return false;
-    return order.prepared && !order.served && !order.releasedAt;
+    return order.prepared && !order.served && !Number(order.releasedAt);
   };
 
   const pendingService: OrderData[] = allOrders.filter(
@@ -744,16 +744,9 @@ export default function App() {
                     <Label htmlFor="num-tables">Número de mesas</Label>
                     <div className="flex items-center space-x-2">
                       <Button
-                        disabled={
-                          pendingPreparation.some(
-                            (order: OrderData) =>
-                              order?.tableId === tables[tables.length - 1].id,
-                          ) ||
-                          pendingService.some(
-                            (order: OrderData) =>
-                              order?.tableId === tables[tables.length - 1].id,
-                          )
-                        }
+                        disabled={Boolean(
+                          tables[tables.length - 1].orders.length,
+                        )}
                         onClick={handleDeleteTable}
                       >
                         <Minus className="h-4 w-4" />
@@ -843,7 +836,7 @@ export default function App() {
             <TableDetail
               table={selectedTable}
               orders={
-                selectedTable.orders?.filter((order) => !order.releasedAt) || []
+                selectedTable.orders?.filter((order) => !Number(order.releasedAt)) || []
               }
               availableProducts={products}
               onAddProduct={handleAddProduct}
@@ -919,7 +912,7 @@ export default function App() {
                           <strong>{order.product.name}</strong>
                         </span>
                         <span className="text-muted-foreground mr-2">
-                          Mesa {order.tableId}
+                          Mesa {order.tableNumber}
                         </span>
                         <Checkbox
                           checked={order.prepared}
@@ -969,7 +962,7 @@ export default function App() {
                           <strong>{order.product.name}</strong>
                         </span>
                         <span className="text-muted-foreground mr-2">
-                          Mesa {order.tableId}
+                          Mesa {order.tableNumber}
                         </span>
                         <Checkbox
                           checked={order.served}
