@@ -1,5 +1,3 @@
-"use client";
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,11 +19,11 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { FileText } from "lucide-react";
-import { OrderData, ProductData, TableData } from "@/lib/strapi";
+import { OrderData, ProductData } from "@/lib/strapi";
 
 interface TableDetailProps {
   children: React.ReactNode;
-  table: TableData;
+  tableNumber: number;
   orders: OrderData[];
   availableProducts: ProductData[];
   onAddProduct: (product: ProductData) => void;
@@ -54,7 +52,7 @@ const quickNotes = [
 ];
 
 export default function TableDetail({
-  table,
+  tableNumber,
   orders,
   availableProducts,
   onAddProduct,
@@ -300,6 +298,7 @@ export default function TableDetail({
                                   order.served,
                                 )
                               }
+                              disabled={order.served}
                             />
                             <label
                               htmlFor={`prepared-${order.id}`}
@@ -353,7 +352,7 @@ export default function TableDetail({
       )}
       <Card className="sticky bottom-2 bg-primary text-primary-foreground">
         <CardContent className="flex justify-between items-center p-6">
-          <CardTitle className="text-2xl">Mesa {table.number}</CardTitle>
+          <CardTitle className="text-2xl">Mesa {tableNumber}</CardTitle>
           <Button onClick={onReleaseTable}>
             <span className="text-3xl font-bold">
               {unpaidTotal.toFixed(2)} €

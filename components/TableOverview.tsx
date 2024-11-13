@@ -4,8 +4,8 @@ import { OrderData, TableData } from "@/lib/strapi";
 
 interface TableOverviewProps {
   tables: TableData[];
-  onTableSelect: (table: TableData) => void;
-  getTableColor: (table: TableData) => string;
+  onTableSelect: (tableId: number) => void;
+  getTableColor: (orders: OrderData[]) => string;
   calculateTableUnpaidTotal: (orders: OrderData[]) => number;
 }
 
@@ -20,20 +20,23 @@ export default function TableOverview({
       {tables.map((table: TableData) => (
         <Card
           key={table.id}
-          className={`${getTableColor(table)} hover:shadow-lg transition-shadow`}
+          className={`${getTableColor(table.orders?.filter((o) => !o.releasedAt))} hover:shadow-lg transition-shadow`}
         >
           <CardContent className="p-4">
             <Button
-              onClick={() => onTableSelect(table)}
+              onClick={() => onTableSelect(table.id)}
               variant={
-                table.orders && table.orders.length ? "default" : "outline"
+                table.orders?.filter((o) => !o.releasedAt).length ? "default" : "outline"
               }
               className="w-full h-full flex flex-col items-center justify-center"
             >
               <span className="text-lg font-bold">{table.number}</span>
-              {table.orders && table.orders.length > 0 && (
+              {table.orders?.filter((o) => !o.releasedAt).length > 0 && (
                 <span className="mt-2">
-                  {calculateTableUnpaidTotal(table.orders).toFixed(2)} €
+                  {calculateTableUnpaidTotal(
+                    table.orders.filter((o) => !o.releasedAt),
+                  ).toFixed(2)}{" "}
+                  €
                 </span>
               )}
             </Button>

@@ -61,7 +61,7 @@ export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [tables, setTables] = useState<TableData[]>([]);
   const [products, setProducts] = useState<ProductData[]>([]);
-  const [selectedTable, setSelectedTable] = useState<TableData | null>(null);
+  const [selectedTableId, setselectedTableId] = useState<number | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
@@ -75,15 +75,12 @@ export default function App() {
 
   const fetchTables = useCallback(async () => {
     try {
-      const tablesData = await getTables();
-      if (tablesData && tablesData.data) {
-        console.log("TABLES:", tablesData.data);
-        setTables(tablesData.data);
-        const newSelectedTable = tablesData.data.find(
-          (table) => table.id === selectedTable?.id,
-        );
-        setSelectedTable(newSelectedTable || null);
-      }
+      await getTables().then((tablesData) => {
+        if (tablesData?.data) {
+          console.log("TABLES:", tablesData.data);
+          setTables(tablesData.data);
+        }
+      });
     } catch {
       toast({
         title: "Error",
@@ -102,7 +99,6 @@ export default function App() {
     const fetchProducts = async () => {
       try {
         const productsData = await getProducts();
-
         if (productsData && productsData.data) {
           console.log("PRODUCTS:", productsData.data);
           setProducts(productsData.data);
@@ -159,8 +155,7 @@ export default function App() {
   );
 
   const handleAddProduct = async (product: ProductData) => {
-    if (!selectedTable || !product) return;
-
+    if (!selectedTableId || !product) return;
     try {
       const createOrderRequest: Omit<
         OrderData,
@@ -182,7 +177,7 @@ export default function App() {
         paid: false,
         product: product.id,
         notes: "",
-        table: selectedTable.id,
+        table: selectedTableId,
       };
 
       createOrder(createOrderRequest).then(() => {
@@ -190,7 +185,7 @@ export default function App() {
         if (!config.disableNotifications) {
           toast({
             title: "Producto añadido",
-            description: `${product.name} ha sido añadido a la mesa ${selectedTable.number}.`,
+            description: `${product.name} ha sido añadido a la mesa ${tables.find((t) => t.id === selectedTableId)?.number}.`,
             duration: config.notificationDuration,
           });
         }
@@ -211,8 +206,6 @@ export default function App() {
     prepared: boolean,
     served: boolean,
   ) => {
-    if (!selectedTable) return;
-
     try {
       updateOrder(orderDocumentId, { prepared, served }).then(() => {
         setTables((prevTables) =>
@@ -291,8 +284,6 @@ export default function App() {
     orderDocumentId: string,
     quantity: number,
   ) => {
-    if (!selectedTable) return;
-
     try {
       updateOrder(orderDocumentId, { quantity }).then(() => fetchTables());
     } catch (error) {
@@ -307,8 +298,6 @@ export default function App() {
   };
 
   const handleUpdateNotes = async (orderDocumentId: string, notes: string) => {
-    if (!selectedTable) return;
-
     try {
       updateOrder(orderDocumentId, { notes }).then(() => fetchTables());
     } catch (error) {
@@ -323,8 +312,6 @@ export default function App() {
   };
 
   const handleRemoveOrder = async (orderDocumentId: string) => {
-    if (!selectedTable) return;
-
     try {
       deleteOrder(orderDocumentId).then(() => {
         fetchTables();
@@ -352,26 +339,27 @@ export default function App() {
   };
 
   const confirmReleaseTable = async () => {
-    if (!selectedTable) return;
+    if (!selectedTableId) return;
 
     try {
+      const selectedTable = tables.find((t) => t.id === selectedTableId);
       if (selectedTable) {
         await Promise.all(
           selectedTable.orders.map((order) =>
             updateOrder(order.documentId, { releasedAt: Date.now() }),
           ),
         ).then(() => {
-          fetchTables();
-          setSelectedTable(null);
-          setIsConfirmationModalOpen(false);
-
-          if (!config.disableNotifications) {
-            toast({
-              title: "Mesa liberada",
-              description: `La mesa ${selectedTable.number} ha sido liberada.`,
-              duration: config.notificationDuration,
-            });
-          }
+          fetchTables().then(() => {
+            setselectedTableId(null);
+            setIsConfirmationModalOpen(false);
+            if (!config.disableNotifications) {
+              toast({
+                title: "Mesa liberada",
+                description: `La mesa ${selectedTable.number} ha sido liberada.`,
+                duration: config.notificationDuration,
+              });
+            }
+          });
         });
       }
     } catch (error) {
@@ -386,7 +374,7 @@ export default function App() {
   };
 
   const handleTogglePaid = async (order: OrderData) => {
-    if (!selectedTable) return;
+    if (!selectedTableId) return;
     try {
       if (order) {
         updateOrder(order.documentId, {
@@ -444,94 +432,35 @@ export default function App() {
   };
 
   const confirmLiquidateOrders = () => {
-    setIsOrderDialogOpen(false);
-    setIsLiquidateConfirmationOpen(false);
-    if (!config.disableNotifications) {
-      toast({
-        title: "Pedidos liquidados",
-        description: "Todos los pedidos han sido liquidados.",
-        duration: config.notificationDuration,
-      });
-    }
+    Promise.all(
+      releasedOrders.map((order) => deleteOrder(order.documentId)),
+    ).then(() => {
+      fetchTables();
+      setIsOrderDialogOpen(false);
+      setIsLiquidateConfirmationOpen(false);
+      if (!config.disableNotifications) {
+        toast({
+          title: "Pedidos liquidados",
+          description: "Todos los pedidos han sido liquidados.",
+          duration: config.notificationDuration,
+        });
+      }
+    });
   };
 
-  const getTableColor = (table: TableData) => {
-    if (!table.orders || !table.orders.length) return "bg-gray-200";
-    if (table.orders.some((order: OrderData) => !order.prepared))
-      return table.orders.some(
-        (order: OrderData) => order.prepared && !order.served,
-      )
+  const getOrdersStatusColor = (orders: OrderData[]) => {
+    if (!orders || !orders.length) return "bg-gray-200";
+    if (orders.some((order: OrderData) => !order.prepared))
+      return orders.some((order: OrderData) => order.prepared && !order.served)
         ? "bg-gradient-to-r from-yellow-200 to-blue-200"
         : "bg-yellow-200";
-    if (table.orders.some((order: OrderData) => !order.served))
-      return "bg-blue-200";
+    if (orders.some((order: OrderData) => !order.served)) return "bg-blue-200";
     return "bg-green-200";
   };
 
-  const handleStatusChange = (
-    productId: number,
-    prepared: boolean,
-    served: boolean,
-  ) => {
-    console.log(
-      "handleStatusChange: (productId, prepared, served)",
-      productId,
-      prepared,
-      served,
-    );
-
-    if (!config.disableNotifications) {
-      if (prepared && !served) {
-        toast({
-          title: "Producto preparado",
-          description: "El producto ha sido marcado como preparado.",
-          duration: config.notificationDuration,
-          action: (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                handleStatusChange(productId, false, false);
-                toast({
-                  title: "Acción deshecha",
-                  description: "El producto ha sido marcado como no preparado.",
-                  duration: config.notificationDuration,
-                });
-              }}
-            >
-              Deshacer
-            </Button>
-          ),
-        });
-      } else if (served) {
-        toast({
-          title: "Producto servido",
-          description: "El producto ha sido marcado como servido.",
-          duration: config.notificationDuration,
-          action: (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                handleStatusChange(productId, true, false);
-                toast({
-                  title: "Acción deshecha",
-                  description: "El producto ha sido marcado como no servido.",
-                  duration: config.notificationDuration,
-                });
-              }}
-            >
-              Deshacer
-            </Button>
-          ),
-        });
-      }
-    }
-  };
-
   const allOrders: OrderData[] = tables.flatMap(({ orders }) => orders);
-  const realisedOrders = allOrders.filter((order) => Number(order?.releasedAt));
-  const groupedRealisedOrders = realisedOrders.reduce(
+  const releasedOrders = allOrders.filter((order) => order.releasedAt);
+  const groupedReleasedOrders = releasedOrders.reduce(
     (acc, order) => {
       const { releasedAt } = order;
       if (!acc[releasedAt]) {
@@ -545,7 +474,7 @@ export default function App() {
 
   const isPendingPreparation = (order: OrderData | undefined): boolean => {
     if (!order) return false;
-    return !order.prepared && !order.served && !Number(order.releasedAt);
+    return !order.prepared && !order.served && !order.releasedAt;
   };
 
   const pendingPreparation: OrderData[] = allOrders.filter(
@@ -556,7 +485,7 @@ export default function App() {
 
   const isPendingService = (order: OrderData | undefined): boolean => {
     if (!order) return false;
-    return order.prepared && !order.served && !Number(order.releasedAt);
+    return order.prepared && !order.served && !order.releasedAt;
   };
 
   const pendingService: OrderData[] = allOrders.filter(
@@ -588,7 +517,7 @@ export default function App() {
         className="w-full"
       >
         <div className="flex space-x-2">
-          <div className="flex-1" onClick={() => setSelectedTable(null)}>
+          <div className="flex-1" onClick={() => setselectedTableId(null)}>
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="tables" className="text-lg">
                 <span className="hidden md:inline">Mesas</span>
@@ -678,7 +607,7 @@ export default function App() {
                     <div className="flex items-center space-x-2">
                       <Button
                         disabled={Boolean(
-                          tables[tables.length - 1].orders.length,
+                          tables[tables.length - 1]?.orders.length,
                         )}
                         onClick={handleDeleteTable}
                       >
@@ -707,7 +636,7 @@ export default function App() {
                 <Button
                   variant="outline"
                   size="icon"
-                  disabled={realisedOrders.length === 0}
+                  disabled={releasedOrders.length === 0}
                 >
                   <ClipboardList className="h-4 w-4" />
                 </Button>
@@ -717,7 +646,7 @@ export default function App() {
                   <DialogTitle>Registro de pedidos</DialogTitle>
                 </DialogHeader>
                 <div className="py-4">
-                  {Object.entries(groupedRealisedOrders).map(
+                  {Object.entries(groupedReleasedOrders).map(
                     ([releasedAt, orders]: [string, OrderData[]]) => (
                       <Card key={releasedAt} className="mb-4">
                         <CardHeader>
@@ -728,7 +657,7 @@ export default function App() {
                         </CardHeader>
                         <CardContent>
                           <p className="text-muted-foreground text-sm mb-2">
-                            {new Date(releasedAt).toLocaleString()}
+                            {new Date(Number(releasedAt)).toLocaleString()}
                           </p>
                           <ul>
                             {orders.map((order: OrderData) => (
@@ -751,7 +680,7 @@ export default function App() {
                     <CardTitle className="text-xl">TOTAL</CardTitle>
                     <Button
                       onClick={handleLiquidateOrders}
-                      disabled={realisedOrders.length === 0}
+                      disabled={releasedOrders.length === 0}
                     >
                       <span className="text-2xl font-bold">
                         {calculateTotalLiquidation().toFixed(2)} €
@@ -765,13 +694,15 @@ export default function App() {
         </div>
 
         <TabsContent value="tables">
-          {selectedTable ? (
+          {selectedTableId ? (
             <TableDetail
-              table={selectedTable}
+              tableNumber={
+                tables.find((t) => t.id === selectedTableId)?.number ?? 0
+              }
               orders={
-                selectedTable.orders?.filter(
-                  (order) => !Number(order.releasedAt),
-                ) || []
+                tables
+                  .find((t) => t.id === selectedTableId)
+                  ?.orders?.filter((order) => !order.releasedAt) || []
               }
               availableProducts={products}
               onAddProduct={handleAddProduct}
@@ -783,7 +714,7 @@ export default function App() {
               onTogglePaid={handleTogglePaid}
               unpaidTotal={
                 calculateUnpaidTotalByOrders(
-                  tables.find((t) => t.id === selectedTable.id)?.orders || [],
+                  tables.find((t) => t.id === selectedTableId)?.orders || [],
                 ) || 0
               }
             >
@@ -816,8 +747,8 @@ export default function App() {
           ) : (
             <TableOverview
               tables={tables}
-              onTableSelect={setSelectedTable}
-              getTableColor={getTableColor}
+              onTableSelect={setselectedTableId}
+              getTableColor={getOrdersStatusColor}
               calculateTableUnpaidTotal={calculateUnpaidTotalByOrders}
             />
           )}
@@ -852,8 +783,8 @@ export default function App() {
                         <Checkbox
                           checked={order.prepared}
                           onCheckedChange={(checked) =>
-                            handleStatusChange(
-                              order.id,
+                            handleUpdateStatus(
+                              order.documentId,
                               checked as boolean,
                               order.served,
                             )
@@ -902,8 +833,8 @@ export default function App() {
                         <Checkbox
                           checked={order.served}
                           onCheckedChange={(checked) =>
-                            handleStatusChange(
-                              order.id,
+                            handleUpdateStatus(
+                              order.documentId,
                               order.prepared,
                               checked as boolean,
                             )
