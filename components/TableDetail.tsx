@@ -27,12 +27,12 @@ interface TableDetailProps {
   orders: OrderData[];
   availableProducts: ProductData[];
   onAddProduct: (product: ProductData) => void;
-  onUpdateStatus: (orderId: number, prepared: boolean, served: boolean) => void;
-  onUpdateQuantity: (orderId: number, quantity: number) => void;
-  onUpdateNotes: (orderId: number, notes: string) => void;
-  onRemoveOrder: (orderId: number) => void;
+  onUpdateStatus: (orderDocumentId: string, prepared: boolean, served: boolean) => void;
+  onUpdateQuantity: (orderDocumentId: string, quantity: number) => void;
+  onUpdateNotes: (orderDocumentId: string, notes: string) => void;
+  onRemoveOrder: (orderDocumentId: string) => void;
   onReleaseTable: () => void;
-  onTogglePaid: (orderId: number) => void;
+  onTogglePaid: (order: OrderData) => void;
   unpaidTotal: number;
 }
 
@@ -75,7 +75,7 @@ export default function TableDetail({
     if (order.paid) return;
 
     if (newQuantity === 0) {
-      onRemoveOrder(order.id);
+      onRemoveOrder(order.documentId);
       toast({
         title: "Producto eliminado",
         description: `${order.product.name} ha sido eliminado del pedido.`,
@@ -91,7 +91,7 @@ export default function TableDetail({
         ),
       });
     } else {
-      onUpdateQuantity(order.id, newQuantity);
+      onUpdateQuantity(order.documentId, newQuantity);
     }
   };
 
@@ -102,7 +102,7 @@ export default function TableDetail({
 
   const handleSaveNote = () => {
     if (noteOrder !== null) {
-      onUpdateNotes(noteOrder.id, noteText);
+      onUpdateNotes(noteOrder.documentId, noteText);
       setNoteOrder(null);
       setNoteText("");
     }
@@ -226,7 +226,7 @@ export default function TableDetail({
                     <div className="flex-1 mb-2 sm:mb-0">
                       <h3
                         className={`font-semibold cursor-pointer ${order.paid ? "line-through text-gray-500" : ""}`}
-                        onClick={() => onTogglePaid(order.id)}
+                        onClick={() => onTogglePaid(order)}
                       >
                         {order.product.name}{" "}
                         {order.quantity > 1
@@ -289,7 +289,7 @@ export default function TableDetail({
                               checked={order.prepared}
                               onCheckedChange={(checked) =>
                                 onUpdateStatus(
-                                  order.id,
+                                  order.documentId,
                                   checked as boolean,
                                   order.served,
                                 )
@@ -309,7 +309,7 @@ export default function TableDetail({
                             checked={order.served}
                             onCheckedChange={(checked) =>
                               onUpdateStatus(
-                                order.id,
+                                order.documentId,
                                 order.prepared,
                                 checked as boolean,
                               )

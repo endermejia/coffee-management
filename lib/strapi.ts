@@ -152,16 +152,16 @@ export async function createOrder(
 }
 
 export async function updateOrder(
-  id: number,
+  documentId: string,
   orderData: Partial<OrderData>,
 ): Promise<ResponseStrapi<OrderData>> {
-  return query(`orders/${id}`, "PUT", orderData);
+  return query(`orders/${documentId}`, "PUT", orderData);
 }
 
 export async function deleteOrder(
-  id: number,
+  documentId: string,
 ): Promise<ResponseStrapi<OrderData>> {
-  return query(`orders/${id}`, "DELETE");
+  return query(`orders/${documentId}`, "DELETE");
 }
 
 // TABLE
@@ -182,14 +182,19 @@ export async function getTables(): Promise<PageableResponseStrapi<TableData>> {
     (res: PageableResponseStrapi<TableStrapiData>) => {
       return {
         ...res,
-        data: res.data.map((table) => ({
-          ...table,
-          orders: table.orders?.map((order) => ({
-            ...order,
-            tableId: table.id,
-            tableNumber: table.number,
-          })),
-        })),
+        data: res.data
+          .map((table) => ({
+            ...table,
+            orders:
+              table.orders
+                ?.map((order) => ({
+                  ...order,
+                  tableId: table.id,
+                  tableNumber: table.number,
+                }))
+                .sort((a, b) => a.id - b.id) || [],
+          }))
+          .sort((a, b) => a.number - b.number),
       };
     },
   );

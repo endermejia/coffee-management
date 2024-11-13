@@ -78,7 +78,7 @@ export default function App() {
       const tablesData = await getTables();
       if (tablesData && tablesData.data) {
         console.log("TABLES:", tablesData.data);
-        setTables(tablesData.data.sort((a, b) => a.number - b.number));
+        setTables(tablesData.data);
       }
     } catch {
       toast({
@@ -222,17 +222,15 @@ export default function App() {
   };
 
   const handleUpdateStatus = async (
-    orderId: number,
+    orderDocumentId: string,
     prepared: boolean,
     served: boolean,
   ) => {
     if (!selectedTable) return;
 
     try {
-      const response = await updateOrder(orderId, { prepared, served });
+      const response = await updateOrder(orderDocumentId, { prepared, served });
       if (response.data) {
-        console.log("PRODUCTO ACTUALIZADO:", response.data);
-
         if (!config.disableNotifications) {
           if (prepared && !served) {
             toast({
@@ -244,7 +242,7 @@ export default function App() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    handleUpdateStatus(orderId, false, false);
+                    handleUpdateStatus(orderDocumentId, false, false);
                     toast({
                       title: "Acción deshecha",
                       description:
@@ -267,7 +265,7 @@ export default function App() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    handleUpdateStatus(orderId, true, false);
+                    handleUpdateStatus(orderDocumentId, true, false);
                     toast({
                       title: "Acción deshecha",
                       description:
@@ -294,25 +292,14 @@ export default function App() {
     }
   };
 
-  const handleUpdateQuantity = async (orderId: number, quantity: number) => {
+  const handleUpdateQuantity = async (
+    orderDocumentId: string,
+    quantity: number,
+  ) => {
     if (!selectedTable) return;
 
     try {
-      const response = await updateOrder(orderId, { quantity });
-      if (response.data) {
-        setTables((prevTables) =>
-          prevTables.map((table) =>
-            table.id === selectedTable.id
-              ? {
-                  ...table,
-                  orders: table.orders.map((order) =>
-                    order.id === orderId ? { ...order, quantity } : order,
-                  ),
-                }
-              : table,
-          ),
-        );
-      }
+      updateOrder(orderDocumentId, { quantity }).then(() => fetchTables());
     } catch (error) {
       console.error("Error updating order quantity:", error);
       toast({
@@ -324,25 +311,13 @@ export default function App() {
     }
   };
 
-  const handleUpdateNotes = async (orderId: number, notes: string) => {
+  const handleUpdateNotes = async (orderDocumentId: string, notes: string) => {
     if (!selectedTable) return;
 
     try {
-      const response = await updateOrder(orderId, { notes });
-      if (response.data) {
-        setTables((prevTables) =>
-          prevTables.map((table) =>
-            table.id === selectedTable.id
-              ? {
-                  ...table,
-                  orders: table.orders.map((order) =>
-                    order.id === orderId ? { ...order, notes } : order,
-                  ),
-                }
-              : table,
-          ),
-        );
-      }
+      updateOrder(orderDocumentId, { notes }).then(() =>
+        fetchTables()
+      );
     } catch (error) {
       console.error("Error updating order notes:", error);
       toast({
@@ -354,29 +329,20 @@ export default function App() {
     }
   };
 
-  const handleRemoveOrder = async (orderId: number) => {
+  const handleRemoveOrder = async (orderDocumentId: string) => {
     if (!selectedTable) return;
 
     try {
-      await deleteOrder(orderId);
-      setTables((prevTables) =>
-        prevTables.map((table) =>
-          table.id === selectedTable.id
-            ? {
-                ...table,
-                orders: table.orders.filter((order) => order.id !== orderId),
-              }
-            : table,
-        ),
-      );
-
-      if (!config.disableNotifications) {
-        toast({
-          title: "Producto eliminado",
-          description: "El producto ha sido eliminado del pedido.",
-          duration: config.notificationDuration,
-        });
-      }
+      deleteOrder(orderDocumentId).then(() => {
+        fetchTables();
+        if (!config.disableNotifications) {
+          toast({
+            title: "Producto eliminado",
+            description: "El producto ha sido eliminado del pedido.",
+            duration: config.notificationDuration,
+          });
+        }
+      });
     } catch (error) {
       console.error("Error removing product:", error);
       toast({
@@ -399,28 +365,21 @@ export default function App() {
       if (selectedTable) {
         await Promise.all(
           selectedTable.orders.map((order) =>
-            updateOrder(order.id, { releasedAt: Date.now() }),
+            updateOrder(order.documentId, { releasedAt: Date.now() }),
           ),
         ).then(() => {
-          console.log("Orders released");
+          fetchTables();
+          setSelectedTable(null);
+          setIsConfirmationModalOpen(false);
+
+          if (!config.disableNotifications) {
+            toast({
+              title: "Mesa liberada",
+              description: `La mesa ${selectedTable.number} ha sido liberada.`,
+              duration: config.notificationDuration,
+            });
+          }
         });
-
-        setTables((prevTables) =>
-          prevTables.map((t) =>
-            t.id === selectedTable.id ? { ...t, orders: [] } : t,
-          ),
-        );
-
-        setSelectedTable(null);
-        setIsConfirmationModalOpen(false);
-
-        if (!config.disableNotifications) {
-          toast({
-            title: "Mesa liberada",
-            description: `La mesa ${selectedTable} ha sido liberada.`,
-            duration: config.notificationDuration,
-          });
-        }
       }
     } catch (error) {
       console.error("Error releasing table:", error);
@@ -433,27 +392,13 @@ export default function App() {
     }
   };
 
-  const handleTogglePaid = async (orderId: number) => {
+  const handleTogglePaid = async (order: OrderData) => {
     if (!selectedTable) return;
-
     try {
-      const order = selectedTable?.orders.find((o) => o.id === orderId);
       if (order) {
-        const response = await updateOrder(orderId, { paid: !order.paid });
-        if (response.data) {
-          setTables((prevTables) =>
-            prevTables.map((t) =>
-              t.id === selectedTable.id
-                ? {
-                    ...t,
-                    orders: t.orders.map((o) =>
-                      o.id === orderId ? { ...o, paid: !o.paid } : o,
-                    ),
-                  }
-                : t,
-            ),
-          );
-        }
+        updateOrder(order.documentId, {
+          paid: !order.paid,
+        }).then(() => fetchTables());
       }
     } catch (error) {
       console.error("Error toggling paid status:", error);
@@ -477,10 +422,7 @@ export default function App() {
     };
 
     try {
-      const response = await createTable(newTable);
-      if (response.data) {
-        await fetchTables(); // Actualiza la lista de mesas
-      }
+      createTable(newTable).then(() => fetchTables());
     } catch (error) {
       console.error("Error adding table:", error);
       toast({
@@ -495,10 +437,8 @@ export default function App() {
   const handleDeleteTable = async () => {
     const lastTable = tables[tables.length - 1];
     if (!lastTable) return;
-
     try {
-      await deleteTable(lastTable.documentId);
-      await fetchTables();
+      deleteTable(lastTable.documentId).then(() => fetchTables());
     } catch (error) {
       console.error("Error deleting table:", error);
       toast({
@@ -836,7 +776,9 @@ export default function App() {
             <TableDetail
               table={selectedTable}
               orders={
-                selectedTable.orders?.filter((order) => !Number(order.releasedAt)) || []
+                selectedTable.orders?.filter(
+                  (order) => !Number(order.releasedAt),
+                ) || []
               }
               availableProducts={products}
               onAddProduct={handleAddProduct}
