@@ -130,6 +130,8 @@ export interface OrderData {
   paid: boolean;
   product: ProductData;
   notes: string;
+  createdAt: number;
+  updatedAt: number;
   releasedAt: number;
   tableId: number;
   tableNumber: number;
@@ -142,7 +144,7 @@ interface OrderStrapiData extends Omit<OrderData, "tableId" | "tableNumber"> {
 export async function createOrder(
   orderData: Omit<
     OrderData,
-    "id" | "documentId" | "tableId" | "tableNumber" | "product"
+    "id" | "documentId" | "tableId" | "tableNumber" | "product" | "createdAt" | "updatedAt" | "releasedAt"
   > & {
     table: number;
     product: number;
@@ -192,7 +194,11 @@ export async function getTables(): Promise<PageableResponseStrapi<TableData>> {
                   tableId: table.id,
                   tableNumber: table.number,
                 }))
-                .sort((a, b) => a.id - b.id) || [],
+                .sort(
+                  (a, b) =>
+                    new Date(a.createdAt).getTime() -
+                    new Date(b.createdAt).getTime(),
+                ) || [],
           }))
           .sort((a, b) => a.number - b.number),
       };

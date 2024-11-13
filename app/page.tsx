@@ -73,12 +73,16 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("tables");
   const { toast } = useToast();
 
-  const fetchTables = async () => {
+  const fetchTables = useCallback(async () => {
     try {
       const tablesData = await getTables();
       if (tablesData && tablesData.data) {
         console.log("TABLES:", tablesData.data);
         setTables(tablesData.data);
+        const newSelectedTable = tablesData.data.find(
+          (table) => table.id === selectedTable?.id,
+        );
+        setSelectedTable(newSelectedTable || null);
       }
     } catch {
       toast({
@@ -88,11 +92,11 @@ export default function App() {
         variant: "destructive",
       });
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchTables();
-  }, [toast]);
+  }, [fetchTables]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -160,7 +164,14 @@ export default function App() {
     try {
       const createOrderRequest: Omit<
         OrderData,
-        "id" | "documentId" | "tableId" | "tableNumber" | "product"
+        | "id"
+        | "documentId"
+        | "tableId"
+        | "tableNumber"
+        | "product"
+        | "createdAt"
+        | "updatedAt"
+        | "releasedAt"
       > & {
         table: number;
         product: number;
@@ -171,37 +182,11 @@ export default function App() {
         paid: false,
         product: product.id,
         notes: "",
-        releasedAt: 0,
         table: selectedTable.id,
       };
 
-      const response = await createOrder(createOrderRequest);
-      if (response.data && response.data.length > 0) {
-        setTables((prevTables) =>
-          prevTables.map((table) =>
-            table.id === selectedTable.id
-              ? {
-                  ...table,
-                  orders: Array.isArray(table.orders)
-                    ? [...table.orders, response.data[0]]
-                    : [response.data[0]],
-                }
-              : table,
-          ),
-        );
-
-        setSelectedTable((prevTable) => {
-          if (prevTable) {
-            return {
-              ...prevTable,
-              orders: Array.isArray(prevTable.orders)
-                ? [...prevTable.orders, response.data[0]]
-                : [response.data[0]],
-            };
-          }
-          return prevTable;
-        });
-
+      createOrder(createOrderRequest).then(() => {
+        fetchTables();
         if (!config.disableNotifications) {
           toast({
             title: "Producto añadido",
@@ -209,7 +194,7 @@ export default function App() {
             duration: config.notificationDuration,
           });
         }
-      }
+      });
     } catch (error) {
       console.error("Error adding product:", error);
       toast({
@@ -229,8 +214,18 @@ export default function App() {
     if (!selectedTable) return;
 
     try {
-      const response = await updateOrder(orderDocumentId, { prepared, served });
-      if (response.data) {
+      updateOrder(orderDocumentId, { prepared, served }).then(() => {
+        setTables((prevTables) =>
+          prevTables.map((table) => ({
+            ...table,
+            orders: table.orders.map((order) =>
+              order.documentId === orderDocumentId
+                ? { ...order, prepared, served }
+                : order,
+            ),
+          })),
+        );
+        fetchTables();
         if (!config.disableNotifications) {
           if (prepared && !served) {
             toast({
@@ -280,7 +275,7 @@ export default function App() {
             });
           }
         }
-      }
+      });
     } catch (error) {
       console.error("Error updating order status:", error);
       toast({
@@ -315,9 +310,7 @@ export default function App() {
     if (!selectedTable) return;
 
     try {
-      updateOrder(orderDocumentId, { notes }).then(() =>
-        fetchTables()
-      );
+      updateOrder(orderDocumentId, { notes }).then(() => fetchTables());
     } catch (error) {
       console.error("Error updating order notes:", error);
       toast({

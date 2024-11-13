@@ -1,3 +1,5 @@
+"use client";
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -27,7 +29,11 @@ interface TableDetailProps {
   orders: OrderData[];
   availableProducts: ProductData[];
   onAddProduct: (product: ProductData) => void;
-  onUpdateStatus: (orderDocumentId: string, prepared: boolean, served: boolean) => void;
+  onUpdateStatus: (
+    orderDocumentId: string,
+    prepared: boolean,
+    served: boolean,
+  ) => void;
   onUpdateQuantity: (orderDocumentId: string, quantity: number) => void;
   onUpdateNotes: (orderDocumentId: string, notes: string) => void;
   onRemoveOrder: (orderDocumentId: string) => void;
