@@ -38,6 +38,11 @@
       "relation": "manyToOne",
       "target": "api::subcategory.subcategory",
       "inversedBy": "products"
+    },
+    "quick_notes": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::quick-note.quick-note"
     }
   }
 }

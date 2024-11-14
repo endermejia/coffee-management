@@ -52,7 +52,7 @@ interface AppConfig {
 }
 
 const initialConfig: AppConfig = {
-  disableNotifications: false,
+  disableNotifications: true,
   notificationDuration: 2000,
   theme: "light",
 };
@@ -176,6 +176,7 @@ export default function App() {
         served: false,
         paid: false,
         product: product.id,
+        extras: [],
         notes: "",
         table: selectedTableId,
       };

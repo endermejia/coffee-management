@@ -17,7 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useToast } from "@/components/ui/use-toast";
 import { FileText } from "lucide-react";
 import { OrderData, ProductData } from "@/lib/strapi";
 
@@ -67,7 +66,6 @@ export default function TableDetail({
   const [, setSelectedCategory] = useState<"bebida" | "comida">("bebida");
   const [noteOrder, setNoteOrder] = useState<OrderData | null>(null);
   const [noteText, setNoteText] = useState("");
-  const { toast } = useToast();
 
   const getStatusColor = (prepared: boolean, served: boolean) => {
     if (served) return "bg-green-200";
@@ -80,20 +78,6 @@ export default function TableDetail({
 
     if (newQuantity === 0) {
       onRemoveOrder(order.documentId);
-      toast({
-        title: "Producto eliminado",
-        description: `${order.product.name} ha sido eliminado del pedido.`,
-        duration: 3000,
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onAddProduct(order.product)}
-          >
-            Deshacer
-          </Button>
-        ),
-      });
     } else {
       onUpdateQuantity(order.documentId, newQuantity);
     }

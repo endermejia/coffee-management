@@ -545,6 +545,33 @@ export interface ApiCategoryCategory extends Struct.CollectionTypeSchema {
   };
 }
 
+export interface ApiExtraExtra extends Struct.CollectionTypeSchema {
+  collectionName: 'extras';
+  info: {
+    singularName: 'extra';
+    pluralName: 'extras';
+    displayName: 'Extra';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    price: Schema.Attribute.Decimal & Schema.Attribute.Required;
+    createdAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String;
+    localizations: Schema.Attribute.Relation<'oneToMany', 'api::extra.extra'>;
+  };
+}
+
 export interface ApiGlobalGlobal extends Struct.SingleTypeSchema {
   collectionName: 'globals';
   info: {
@@ -593,6 +620,7 @@ export interface ApiOrderOrder extends Struct.CollectionTypeSchema {
     notes: Schema.Attribute.Text;
     paid: Schema.Attribute.Boolean;
     product: Schema.Attribute.Relation<'oneToOne', 'api::product.product'>;
+    extras: Schema.Attribute.Relation<'oneToMany', 'api::extra.extra'>;
     createdAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
@@ -632,6 +660,10 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'manyToOne',
       'api::subcategory.subcategory'
     >;
+    quick_notes: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::quick-note.quick-note'
+    >;
     createdAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;
@@ -643,6 +675,36 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
     localizations: Schema.Attribute.Relation<
       'oneToMany',
       'api::product.product'
+    >;
+  };
+}
+
+export interface ApiQuickNoteQuickNote extends Struct.CollectionTypeSchema {
+  collectionName: 'quick_notes';
+  info: {
+    singularName: 'quick-note';
+    pluralName: 'quick-notes';
+    displayName: 'QuickNote';
+    description: '';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    name: Schema.Attribute.String &
+      Schema.Attribute.Required &
+      Schema.Attribute.Unique;
+    createdAt: Schema.Attribute.DateTime;
+    updatedAt: Schema.Attribute.DateTime;
+    publishedAt: Schema.Attribute.DateTime;
+    createdBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    updatedBy: Schema.Attribute.Relation<'oneToOne', 'admin::user'> &
+      Schema.Attribute.Private;
+    locale: Schema.Attribute.String;
+    localizations: Schema.Attribute.Relation<
+      'oneToMany',
+      'api::quick-note.quick-note'
     >;
   };
 }
@@ -1090,9 +1152,11 @@ declare module '@strapi/strapi' {
       'plugin::users-permissions.user': PluginUsersPermissionsUser;
       'api::about.about': ApiAboutAbout;
       'api::category.category': ApiCategoryCategory;
+      'api::extra.extra': ApiExtraExtra;
       'api::global.global': ApiGlobalGlobal;
       'api::order.order': ApiOrderOrder;
       'api::product.product': ApiProductProduct;
+      'api::quick-note.quick-note': ApiQuickNoteQuickNote;
       'api::subcategory.subcategory': ApiSubcategorySubcategory;
       'api::table.table': ApiTableTable;
       'admin::permission': AdminPermission;

@@ -1,0 +1,21 @@
+{
+  "kind": "collectionType",
+  "collectionName": "quick_notes",
+  "info": {
+    "singularName": "quick-note",
+    "pluralName": "quick-notes",
+    "displayName": "QuickNote",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    }
+  }
+}

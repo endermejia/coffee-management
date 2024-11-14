@@ -84,10 +84,26 @@ export interface PageableResponseStrapi<T> {
   };
 }
 
+// QUICK NOTE
+export interface QuickNoteData {
+  id: number;
+  documentId: string;
+  name: string;
+}
+
+// EXTRA
+export interface ExtraData {
+  id: number;
+  documentId: string;
+  name: string;
+  price: number;
+}
+
 // CATEGORY
 
 export interface CategoryData {
   id: number;
+  documentId: string;
   name: string;
   products: ProductData[];
 }
@@ -96,6 +112,7 @@ export interface CategoryData {
 
 export interface SubcategoryData {
   id: number;
+  documentId: string;
   name: string;
   products: ProductData[];
 }
@@ -104,20 +121,24 @@ export interface SubcategoryData {
 
 export interface ProductData {
   id: number;
+  documentId: string;
   name: string;
   price: number;
   alwaysPrepared: boolean;
   category: CategoryData;
   subcategory: SubcategoryData;
+  quick_notes: QuickNoteData[];
 }
 
 export async function getProducts(): Promise<
   PageableResponseStrapi<ProductData>
 > {
-  return query("products?populate[0]=category&populate[1]=subcategory").then(
+  return query("products?populate[0]=category&populate[1]=subcategory&populate[2]=quick_notes").then(
     (res: PageableResponseStrapi<ProductData>) => res,
   );
 }
+
+// TODO: crud products
 
 // ORDER
 
@@ -129,6 +150,7 @@ export interface OrderData {
   served: boolean;
   paid: boolean;
   product: ProductData;
+  extras: ExtraData[];
   notes: string;
   createdAt: number;
   updatedAt: number;
@@ -180,7 +202,7 @@ interface TableStrapiData extends Omit<TableData, "orders"> {
 }
 
 export async function getTables(): Promise<PageableResponseStrapi<TableData>> {
-  return query("tables?populate[orders][populate][0]=product").then(
+  return query("tables?populate[orders][populate][0]=product&populate[orders][populate][1]=extras").then(
     (res: PageableResponseStrapi<TableStrapiData>) => {
       return {
         ...res,
