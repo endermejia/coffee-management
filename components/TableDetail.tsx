@@ -248,8 +248,8 @@ export default function TableDetail({
                           size="icon"
                           disabled={
                             order.paid ||
-                            (!order.product.alwaysPrepared &&
-                              (order.prepared || order.served))
+                            order.served ||
+                            (!order.product.alwaysPrepared && order.prepared)
                           }
                         >
                           -
@@ -266,8 +266,8 @@ export default function TableDetail({
                           className="w-16 text-center"
                           disabled={
                             order.paid ||
-                            (!order.product.alwaysPrepared &&
-                              (order.prepared || order.served))
+                            order.served ||
+                            (!order.product.alwaysPrepared && order.prepared)
                           }
                         />
                         <Button
@@ -278,8 +278,8 @@ export default function TableDetail({
                           size="icon"
                           disabled={
                             order.paid ||
-                            (!order.product.alwaysPrepared &&
-                              (order.prepared || order.served))
+                            order.served ||
+                            (!order.product.alwaysPrepared && order.prepared)
                           }
                         >
                           +
@@ -315,7 +315,7 @@ export default function TableDetail({
                             onCheckedChange={(checked) =>
                               onUpdateStatus(
                                 order.documentId,
-                                order.prepared,
+                                true,
                                 checked as boolean,
                               )
                             }

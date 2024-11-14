@@ -208,16 +208,6 @@ export default function App() {
   ) => {
     try {
       updateOrder(orderDocumentId, { prepared, served }).then(() => {
-        setTables((prevTables) =>
-          prevTables.map((table) => ({
-            ...table,
-            orders: table.orders.map((order) =>
-              order.documentId === orderDocumentId
-                ? { ...order, prepared, served }
-                : order,
-            ),
-          })),
-        );
         fetchTables();
         if (!config.disableNotifications) {
           if (prepared && !served) {
@@ -225,10 +215,10 @@ export default function App() {
               title: "Producto preparado",
               description: "El producto ha sido marcado como preparado.",
               duration: config.notificationDuration,
-              action: (
+              action: allOrders.find((o) => o.documentId === orderDocumentId)
+                ?.product.alwaysPrepared ? undefined : (
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => {
                     handleUpdateStatus(orderDocumentId, false, false);
                     toast({
@@ -239,7 +229,7 @@ export default function App() {
                     });
                   }}
                 >
-                  Deshacer
+                  No preparado
                 </Button>
               ),
             });
@@ -251,7 +241,6 @@ export default function App() {
               action: (
                 <Button
                   variant="outline"
-                  size="sm"
                   onClick={() => {
                     handleUpdateStatus(orderDocumentId, true, false);
                     toast({
@@ -262,7 +251,7 @@ export default function App() {
                     });
                   }}
                 >
-                  Deshacer
+                  No servido
                 </Button>
               ),
             });
@@ -714,7 +703,9 @@ export default function App() {
               onTogglePaid={handleTogglePaid}
               unpaidTotal={
                 calculateUnpaidTotalByOrders(
-                  tables.find((t) => t.id === selectedTableId)?.orders || [],
+                  tables
+                      .find((t) => t.id === selectedTableId)
+                      ?.orders?.filter((order) => !order.releasedAt) || [],
                 ) || 0
               }
             >
