@@ -664,6 +664,7 @@ export interface ApiProductProduct extends Struct.CollectionTypeSchema {
       'oneToMany',
       'api::quick-note.quick-note'
     >;
+    extras: Schema.Attribute.Relation<'oneToMany', 'api::extra.extra'>;
     createdAt: Schema.Attribute.DateTime;
     updatedAt: Schema.Attribute.DateTime;
     publishedAt: Schema.Attribute.DateTime;

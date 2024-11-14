@@ -43,6 +43,11 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::quick-note.quick-note"
+    },
+    "extras": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::extra.extra"
     }
   }
 }

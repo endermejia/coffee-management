@@ -128,14 +128,15 @@ export interface ProductData {
   category: CategoryData;
   subcategory: SubcategoryData;
   quick_notes: QuickNoteData[];
+  extras: ExtraData[];
 }
 
 export async function getProducts(): Promise<
   PageableResponseStrapi<ProductData>
 > {
-  return query("products?populate[0]=category&populate[1]=subcategory&populate[2]=quick_notes").then(
-    (res: PageableResponseStrapi<ProductData>) => res,
-  );
+  return query(
+    "products?populate[0]=category&populate[1]=subcategory&populate[2]=quick_notes&populate[3]=extras",
+  ).then((res: PageableResponseStrapi<ProductData>) => res);
 }
 
 // TODO: crud products
@@ -166,7 +167,14 @@ interface OrderStrapiData extends Omit<OrderData, "tableId" | "tableNumber"> {
 export async function createOrder(
   orderData: Omit<
     OrderData,
-    "id" | "documentId" | "tableId" | "tableNumber" | "product" | "createdAt" | "updatedAt" | "releasedAt"
+    | "id"
+    | "documentId"
+    | "tableId"
+    | "tableNumber"
+    | "product"
+    | "createdAt"
+    | "updatedAt"
+    | "releasedAt"
   > & {
     table: number;
     product: number;
@@ -177,7 +185,7 @@ export async function createOrder(
 
 export async function updateOrder(
   documentId: string,
-  orderData: Partial<OrderData>,
+  orderData: Partial<Omit<OrderData, "extras"> & { extras: number[] }>,
 ): Promise<ResponseStrapi<OrderData>> {
   return query(`orders/${documentId}`, "PUT", orderData);
 }
@@ -202,30 +210,31 @@ interface TableStrapiData extends Omit<TableData, "orders"> {
 }
 
 export async function getTables(): Promise<PageableResponseStrapi<TableData>> {
-  return query("tables?populate[orders][populate][0]=product&populate[orders][populate][1]=extras").then(
-    (res: PageableResponseStrapi<TableStrapiData>) => {
-      return {
-        ...res,
-        data: res.data
-          .map((table) => ({
-            ...table,
-            orders:
-              table.orders
-                ?.map((order) => ({
-                  ...order,
-                  tableId: table.id,
-                  tableNumber: table.number,
-                }))
-                .sort(
-                  (a, b) =>
-                    new Date(a.createdAt).getTime() -
-                    new Date(b.createdAt).getTime(),
-                ) || [],
-          }))
-          .sort((a, b) => a.number - b.number),
-      };
-    },
-  );
+  return query(
+    // "tables?populate[orders][populate][0]=product&populate[orders][populate][1]=extras",
+    "tables?populate[orders][populate][product][populate]=extras&populate[orders][populate]=extras",
+  ).then((res: PageableResponseStrapi<TableStrapiData>) => {
+    return {
+      ...res,
+      data: res.data
+        .map((table) => ({
+          ...table,
+          orders:
+            table.orders
+              ?.map((order) => ({
+                ...order,
+                tableId: table.id,
+                tableNumber: table.number,
+              }))
+              .sort(
+                (a, b) =>
+                  new Date(a.createdAt).getTime() -
+                  new Date(b.createdAt).getTime(),
+              ) || [],
+        }))
+        .sort((a, b) => a.number - b.number),
+    };
+  });
 }
 
 export async function createTable(

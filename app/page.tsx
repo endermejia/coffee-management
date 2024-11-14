@@ -37,6 +37,7 @@ import {
   createTable,
   deleteOrder,
   deleteTable,
+  ExtraData,
   getProducts,
   getTables,
   OrderData,
@@ -85,7 +86,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to fetch tables from Strapi",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -107,7 +108,7 @@ export default function App() {
         toast({
           title: "Error",
           description: "Failed to fetch products from Strapi",
-          duration: 3000,
+          duration: config.notificationDuration,
           variant: "destructive",
         });
       }
@@ -129,11 +130,9 @@ export default function App() {
   }, [config.theme]);
 
   const handleLogin = (username: string, password: string) => {
-    if (username === "admin" && password === "password") {
-      setIsLoggedIn(true);
-    } else {
-      alert("Credenciales incorrectas");
-    }
+    setIsLoggedIn(true);
+    // TODO: implement Auth
+    console.log(username, password);
   };
 
   const calculateTotalByOrders = useCallback((orders: OrderData[]): number => {
@@ -196,7 +195,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to add product to order",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -264,7 +263,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to update order status",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -281,7 +280,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to update order quantity",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -295,7 +294,27 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to update order notes",
-        duration: 3000,
+        duration: config.notificationDuration,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateExtras = async (
+    orderDocumentId: string,
+    extras: ExtraData[],
+  ) => {
+    try {
+      await updateOrder(orderDocumentId, {
+        extras: extras.map((extra) => extra.id),
+      });
+      fetchTables();
+    } catch (error) {
+      console.error("Error updating order extras:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update order extras",
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -318,7 +337,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to remove product from order",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -357,7 +376,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to release table",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -376,7 +395,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to update paid status",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -399,7 +418,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to add table",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -415,7 +434,7 @@ export default function App() {
       toast({
         title: "Error",
         description: "Failed to delete table",
-        duration: 3000,
+        duration: config.notificationDuration,
         variant: "destructive",
       });
     }
@@ -699,14 +718,15 @@ export default function App() {
               onUpdateStatus={handleUpdateStatus}
               onUpdateQuantity={handleUpdateQuantity}
               onUpdateNotes={handleUpdateNotes}
+              onUpdateExtras={handleUpdateExtras}
               onRemoveOrder={handleRemoveOrder}
               onReleaseTable={handleReleaseTable}
               onTogglePaid={handleTogglePaid}
               unpaidTotal={
                 calculateUnpaidTotalByOrders(
                   tables
-                      .find((t) => t.id === selectedTableId)
-                      ?.orders?.filter((order) => !order.releasedAt) || [],
+                    .find((t) => t.id === selectedTableId)
+                    ?.orders?.filter((order) => !order.releasedAt) || [],
                 ) || 0
               }
             >

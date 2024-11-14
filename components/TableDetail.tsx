@@ -17,8 +17,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { FileText } from "lucide-react";
-import { OrderData, ProductData } from "@/lib/strapi";
+import { FileText, Plus } from "lucide-react";
+import { ExtraData, OrderData, ProductData } from "@/lib/strapi";
 
 interface TableDetailProps {
   children: React.ReactNode;
@@ -33,6 +33,7 @@ interface TableDetailProps {
   ) => void;
   onUpdateQuantity: (orderDocumentId: string, quantity: number) => void;
   onUpdateNotes: (orderDocumentId: string, notes: string) => void;
+  onUpdateExtras: (orderDocumentId: string, extras: ExtraData[]) => void;
   onRemoveOrder: (orderDocumentId: string) => void;
   onReleaseTable: () => void;
   onTogglePaid: (order: OrderData) => void;
@@ -58,6 +59,7 @@ export default function TableDetail({
   onUpdateStatus,
   onUpdateQuantity,
   onUpdateNotes,
+  onUpdateExtras,
   onRemoveOrder,
   onReleaseTable,
   onTogglePaid,
@@ -66,6 +68,8 @@ export default function TableDetail({
   const [, setSelectedCategory] = useState<"bebida" | "comida">("bebida");
   const [noteOrder, setNoteOrder] = useState<OrderData | null>(null);
   const [noteText, setNoteText] = useState("");
+  const [extrasOrder, setExtrasOrder] = useState<OrderData | null>(null);
+  const [extras, setExtras] = useState<ExtraData[] | null>(null);
 
   const getStatusColor = (prepared: boolean, served: boolean) => {
     if (served) return "bg-green-200";
@@ -98,6 +102,29 @@ export default function TableDetail({
 
   const addQuickNote = (note: string) => {
     setNoteText((prev) => (prev ? `${prev}, ${note}` : note));
+  };
+
+  const handleAddExtra = (order: OrderData) => {
+    setExtrasOrder(order);
+    setExtras(order.extras);
+  };
+
+  const addExtra = (extra: ExtraData) => {
+    if (extras?.find((e) => e.id === extra.id)) {
+      setExtras(
+        (prevExtras) => prevExtras?.filter((e) => e.id !== extra.id) || [],
+      );
+    } else {
+      setExtras([...(extras || []), extra]);
+    }
+  };
+
+  const handleSaveExtras = () => {
+    if (extrasOrder !== null) {
+      onUpdateExtras(extrasOrder.documentId, extras || []);
+      setExtrasOrder(null);
+      setExtras(null);
+    }
   };
 
   const groupedAvailableProducts: Record<
@@ -315,19 +342,36 @@ export default function TableDetail({
                           </label>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleAddNote(order)}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Nota
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        {!!order.product.extras?.length && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleAddExtra(order)}
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Extras
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleAddNote(order)}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Nota
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   {order.notes && (
                     <p className="mt-2 text-sm text-gray-600">{order.notes}</p>
                   )}
+                  {order.extras.map((extra) => (
+                    <p key={extra.id} className="mt-2 text-sm text-gray-600">
+                      + {extra.name} ({extra.price.toFixed(2)} €)
+                    </p>
+                  ))}
                 </Card>
               ))}
             </div>
@@ -344,6 +388,32 @@ export default function TableDetail({
           </Button>
         </CardContent>
       </Card>
+      <Dialog
+        open={extrasOrder !== null}
+        onOpenChange={(open) => !open && setExtrasOrder(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Añadir extra</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-wrap gap-2 mb-4">
+            {extrasOrder?.product.extras.map((extra, index) => (
+              <Button
+                key={index}
+                variant={
+                  extras?.some((e) => e.id === extra.id)
+                    ? "default"
+                    : "secondary"
+                }
+                onClick={() => addExtra(extra)}
+              >
+                {extra.name} ({extra.price.toFixed(2)} €)
+              </Button>
+            ))}
+          </div>
+          <Button onClick={handleSaveExtras}>Guardar extras</Button>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={noteOrder !== null}
         onOpenChange={(open) => !open && setNoteOrder(null)}
