@@ -135,7 +135,11 @@ export async function getProducts(): Promise<
   PageableResponseStrapi<ProductData>
 > {
   return query(
-    "products?populate[0]=category&populate[1]=subcategory&populate[2]=quick_notes&populate[3]=extras",
+    "products" +
+      "?populate[0]=category" +
+      "&populate[1]=subcategory" +
+      "&populate[2]=quick_notes" +
+      "&populate[3]=extras",
   ).then((res: PageableResponseStrapi<ProductData>) => res);
 }
 
@@ -211,8 +215,10 @@ interface TableStrapiData extends Omit<TableData, "orders"> {
 
 export async function getTables(): Promise<PageableResponseStrapi<TableData>> {
   return query(
-    // "tables?populate[orders][populate][0]=product&populate[orders][populate][1]=extras",
-    "tables?populate[orders][populate][product][populate]=extras&populate[orders][populate]=extras",
+    "tables" +
+      "?populate[orders][populate][extras]=true" +
+      "&populate[orders][populate][product][populate][extras]=true" +
+      "&populate[orders][populate][product][populate][quick_notes]=true",
   ).then((res: PageableResponseStrapi<TableStrapiData>) => {
     return {
       ...res,

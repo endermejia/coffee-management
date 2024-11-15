@@ -40,17 +40,6 @@ interface TableDetailProps {
   unpaidTotal: number;
 }
 
-const quickNotes = [
-  "Sin hielo",
-  "Sin azúcar",
-  "Para llevar",
-  "Extra caliente",
-  "Sin lactosa",
-  "Sin gluten",
-  "Poco hecho",
-  "Muy hecho",
-];
-
 export default function TableDetail({
   tableNumber,
   orders,
@@ -240,62 +229,94 @@ export default function TableDetail({
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
                     <div className="flex-1 mb-2 sm:mb-0">
                       <h3
-                        className={`font-semibold cursor-pointer ${order.paid ? "line-through text-gray-500" : ""}`}
+                        className={`font-semibold cursor-pointer space-x-1 ${order.paid ? "line-through text-gray-500" : ""}`}
                         onClick={() => onTogglePaid(order)}
                       >
-                        {order.product.name}{" "}
-                        {order.quantity > 1
-                          ? `(${order.product.price.toFixed(2)} € x ${order.quantity} = ${(order.product.price * order.quantity).toFixed(2)} €)`
-                          : `${order.product.price.toFixed(2)} €`}
+                        <span>
+                          {order.product.name}
+                          {(order.quantity > 1 || order.extras.length > 0) && (
+                            <span className="text-xs">
+                              {" "}
+                              ({order.product.price.toFixed(2)} €)
+                            </span>
+                          )}
+                        </span>
+                        {order.extras && order.extras.length > 0 && (
+                          <span className="text-xs italic">
+                            +{" "}
+                            {order.extras
+                              .map(
+                                (extra) =>
+                                  `${extra.name} (${extra.price.toFixed(2)} €)`,
+                              )
+                              .join(" + ")}
+                          </span>
+                        )}
                       </h3>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            onClick={() =>
+                              handleQuantityChange(order, order.quantity - 1)
+                            }
+                            variant="outline"
+                            size="icon"
+                            disabled={
+                              order.paid ||
+                              order.served ||
+                              (!order.product.alwaysPrepared && order.prepared)
+                            }
+                          >
+                            -
+                          </Button>
+                          <Input
+                            type="number"
+                            value={order.quantity}
+                            onChange={(e) =>
+                              handleQuantityChange(
+                                order,
+                                parseInt(e.target.value) || 0,
+                              )
+                            }
+                            className="w-16 text-center"
+                            disabled={
+                              order.paid ||
+                              order.served ||
+                              (!order.product.alwaysPrepared && order.prepared)
+                            }
+                          />
+                          <Button
+                            onClick={() =>
+                              handleQuantityChange(order, order.quantity + 1)
+                            }
+                            variant="outline"
+                            size="icon"
+                            disabled={
+                              order.paid ||
+                              order.served ||
+                              (!order.product.alwaysPrepared && order.prepared)
+                            }
+                          >
+                            +
+                          </Button>
+                        </div>
+                        <h3
+                          className={`font-semibold text-xl cursor-pointer ${order.paid ? "line-through text-gray-500" : ""}`}
+                          onClick={() => onTogglePaid(order)}
+                        >
+                          {(
+                            (order.product.price +
+                              order.extras.reduce(
+                                (acc, extra) => acc + extra.price,
+                                0,
+                              )) *
+                            order.quantity
+                          ).toFixed(2)}{" "}
+                          €
+                        </h3>
+                      </div>
                     </div>
                     <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          onClick={() =>
-                            handleQuantityChange(order, order.quantity - 1)
-                          }
-                          variant="outline"
-                          size="icon"
-                          disabled={
-                            order.paid ||
-                            order.served ||
-                            (!order.product.alwaysPrepared && order.prepared)
-                          }
-                        >
-                          -
-                        </Button>
-                        <Input
-                          type="number"
-                          value={order.quantity}
-                          onChange={(e) =>
-                            handleQuantityChange(
-                              order,
-                              parseInt(e.target.value) || 0,
-                            )
-                          }
-                          className="w-16 text-center"
-                          disabled={
-                            order.paid ||
-                            order.served ||
-                            (!order.product.alwaysPrepared && order.prepared)
-                          }
-                        />
-                        <Button
-                          onClick={() =>
-                            handleQuantityChange(order, order.quantity + 1)
-                          }
-                          variant="outline"
-                          size="icon"
-                          disabled={
-                            order.paid ||
-                            order.served ||
-                            (!order.product.alwaysPrepared && order.prepared)
-                          }
-                        >
-                          +
-                        </Button>
-                      </div>
                       <div className="flex items-center space-x-2">
                         {!order.product.alwaysPrepared && (
                           <div className="flex flex-col items-center">
@@ -343,7 +364,7 @@ export default function TableDetail({
                         </div>
                       </div>
                       <div className="flex items-center space-x-2">
-                        {!!order.product.extras?.length && (
+                        {order.product.extras?.length > 0 && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -367,11 +388,6 @@ export default function TableDetail({
                   {order.notes && (
                     <p className="mt-2 text-sm text-gray-600">{order.notes}</p>
                   )}
-                  {order.extras.map((extra) => (
-                    <p key={extra.id} className="mt-2 text-sm text-gray-600">
-                      + {extra.name} ({extra.price.toFixed(2)} €)
-                    </p>
-                  ))}
                 </Card>
               ))}
             </div>
@@ -429,13 +445,13 @@ export default function TableDetail({
             className="mb-4"
           />
           <div className="flex flex-wrap gap-2 mb-4">
-            {quickNotes.map((note, index) => (
+            {noteOrder?.product.quick_notes.map((note, index) => (
               <Button
                 key={index}
                 variant="outline"
-                onClick={() => addQuickNote(note)}
+                onClick={() => addQuickNote(note.name)}
               >
-                {note}
+                {note.name}
               </Button>
             ))}
           </div>

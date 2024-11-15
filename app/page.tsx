@@ -102,7 +102,9 @@ export default function App() {
         const productsData = await getProducts();
         if (productsData && productsData.data) {
           console.log("PRODUCTS:", productsData.data);
-          setProducts(productsData.data);
+          setProducts(
+            productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
+          );
         }
       } catch {
         toast({
@@ -137,19 +139,32 @@ export default function App() {
 
   const calculateTotalByOrders = useCallback((orders: OrderData[]): number => {
     return orders?.reduce(
-      (total, order) => total + order.product.price * order.quantity,
+      (total, order) =>
+        total +
+        (order.product.price +
+          (order.extras?.reduce(
+            (extraTotal, extra) => extraTotal + extra.price,
+            0,
+          ) || 0)) *
+          order.quantity,
       0,
     );
   }, []);
 
   const calculateUnpaidTotalByOrders = useCallback(
-    (orders: OrderData[]): number => {
-      return orders?.reduce(
+    (orders: OrderData[]): number =>
+      orders?.reduce(
         (total, order) =>
-          total + order.product.price * order.quantity * (order.paid ? 0 : 1),
+          total +
+          (order.paid
+            ? 0
+            : (order.product.price +
+                order.extras?.reduce(
+                  (extraTotal, extra) => extraTotal + extra.price,
+                  0,
+                ) || 0) * order.quantity),
         0,
-      );
-    },
+      ),
     [],
   );
 
@@ -670,12 +685,34 @@ export default function App() {
                           </p>
                           <ul>
                             {orders.map((order: OrderData) => (
-                              <li key={order.id}>
-                                {order.product.name} x{order.quantity} -{" "}
-                                {(order.product.price * order.quantity).toFixed(
-                                  2,
-                                )}{" "}
-                                €
+                              <li key={order.id} className="mb-2">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="font-bold">
+                                      {order.product.name}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground font-semibold bg-gray-100 px-2 py-1 rounded">
+                                      x{order.quantity}
+                                    </span>
+                                  </div>
+                                  <span className="font-semibold">
+                                    {(
+                                      order.product.price * order.quantity +
+                                      order.extras.reduce(
+                                        (sum, extra) => sum + extra.price,
+                                        0,
+                                      )
+                                    ).toFixed(2)}{" "}
+                                    €
+                                  </span>
+                                </div>
+                                {order.extras && order.extras.length > 0 && (
+                                  <ul className="ml-6 mt-1 text-sm text-muted-foreground list-disc">
+                                    {order.extras.map((extra) => (
+                                      <li key={extra.id}>{extra.name}</li>
+                                    ))}
+                                  </ul>
+                                )}
                               </li>
                             ))}
                           </ul>
