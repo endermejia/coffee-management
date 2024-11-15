@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { FileText, Plus } from "lucide-react";
 import { ExtraData, OrderData, ProductData } from "@/lib/strapi";
+import ConfirmationModal from "@/components/ConfirmationModal";
 
 interface TableDetailProps {
   children: React.ReactNode;
@@ -59,6 +60,11 @@ export default function TableDetail({
   const [noteText, setNoteText] = useState("");
   const [extrasOrder, setExtrasOrder] = useState<OrderData | null>(null);
   const [extras, setExtras] = useState<ExtraData[] | null>(null);
+  const [isRemoveOrderConfirmationOpen, setIsRemoveOrderConfirmationOpen] =
+    useState(false);
+  const [removeOrderDocumentId, setRemoveOrderDocumentId] = useState<
+    string | null
+  >(null);
 
   const getStatusColor = (prepared: boolean, served: boolean) => {
     if (served) return "bg-green-200";
@@ -70,7 +76,8 @@ export default function TableDetail({
     if (order.paid) return;
 
     if (newQuantity === 0) {
-      onRemoveOrder(order.documentId);
+      setRemoveOrderDocumentId(order.documentId);
+      setIsRemoveOrderConfirmationOpen(true);
     } else {
       onUpdateQuantity(order.documentId, newQuantity);
     }
@@ -113,6 +120,14 @@ export default function TableDetail({
       onUpdateExtras(extrasOrder.documentId, extras || []);
       setExtrasOrder(null);
       setExtras(null);
+    }
+  };
+
+  const confirmRemoveOrder = () => {
+    if (removeOrderDocumentId !== null) {
+      onRemoveOrder(removeOrderDocumentId);
+      setRemoveOrderDocumentId(null);
+      setIsRemoveOrderConfirmationOpen(false);
     }
   };
 
@@ -227,7 +242,7 @@ export default function TableDetail({
                   className={`${getStatusColor(order.prepared, order.served)} p-4`}
                 >
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    <div className="flex-1 mb-2 sm:mb-0">
+                    <div className="flex-1 mb-2 sm:mb-0 space-y-2">
                       <h3
                         className={`font-semibold cursor-pointer space-x-1 ${order.paid ? "line-through text-gray-500" : ""}`}
                         onClick={() => onTogglePaid(order)}
@@ -458,6 +473,13 @@ export default function TableDetail({
           <Button onClick={handleSaveNote}>Guardar nota</Button>
         </DialogContent>
       </Dialog>
+      <ConfirmationModal
+        isOpen={isRemoveOrderConfirmationOpen}
+        onClose={() => setIsRemoveOrderConfirmationOpen(false)}
+        onConfirm={confirmRemoveOrder}
+        title={"Confirmar eliminar pedido"}
+        description="¿Estás seguro de que quieres eliminar el pedidos?"
+      />
     </div>
   );
 }
