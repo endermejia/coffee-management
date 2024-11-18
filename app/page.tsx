@@ -43,6 +43,7 @@ import {
   getTables,
   login,
   OrderData,
+  PageableResponseStrapi,
   ProductData,
   removeStrapiToken,
   setStrapiToken,
@@ -84,7 +85,11 @@ export default function App() {
     try {
       const [tablesData, productsData] = await Promise.all([
         getTables(),
-        getProducts(),
+        products.length === 0
+          ? getProducts()
+          : Promise.resolve({
+              data: products,
+            } as PageableResponseStrapi<ProductData>),
       ]);
       if (
         tablesData?.error?.details?.status === 401 ||
@@ -100,7 +105,7 @@ export default function App() {
         console.log("TABLES:", tablesData);
         setTables(tablesData.data);
       }
-      if (productsData?.data) {
+      if (products.length === 0 && productsData?.data) {
         console.log("PRODUCTS:", productsData);
         setProducts(
           productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
@@ -114,7 +119,7 @@ export default function App() {
         variant: "destructive",
       });
     }
-  }, [toast]);
+  }, [toast, products]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -391,9 +396,10 @@ export default function App() {
     try {
       const selectedTable = tables.find((t) => t.id === selectedTableId);
       if (selectedTable) {
+        const releasedAt = Date.now();
         await Promise.all(
           selectedTable.orders.map((order) =>
-            updateOrder(order.documentId, { releasedAt: Date.now() }),
+            updateOrder(order.documentId, { releasedAt }),
           ),
         ).then(() => {
           fetchData().then(() => {
