@@ -1,18 +1,34 @@
-"use server";
+const STRAPI_HOST = process.env.NEXT_PUBLIC_STRAPI_HOST;
+const TOKEN = "token";
 
-const { STRAPI_HOST, STRAPI_TOKEN } = process.env;
+export const getStrapiToken = () => localStorage.getItem(TOKEN);
+export const setStrapiToken = (token: string) =>
+  localStorage.setItem(TOKEN, token);
+export const removeStrapiToken = () => localStorage.removeItem(TOKEN);
 
-async function query(url: string, method: string = "GET", body?: unknown) {
+async function query(
+  url: string,
+  method: string = "GET",
+  body?: unknown,
+  dataBody: boolean = true,
+) {
+  const token = getStrapiToken();
+
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+  };
+
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
   const options: RequestInit = {
     method,
-    headers: {
-      Authorization: `Bearer ${STRAPI_TOKEN}`,
-      "Content-Type": "application/json",
-    },
+    headers,
   };
 
   if (body) {
-    options.body = JSON.stringify({ data: body });
+    options.body = JSON.stringify(dataBody ? { data: body } : body);
   }
 
   try {
@@ -82,6 +98,44 @@ export interface PageableResponseStrapi<T> {
       total: number;
     };
   };
+  error?: {
+    details: {
+      message: string;
+      name: string;
+      status: number;
+    };
+  };
+}
+
+export interface AuthResponseStrapi {
+  jwt: string;
+  user: UserData;
+  error?: {
+    details: {
+      message: string;
+      name: string;
+      status: number;
+    };
+  };
+}
+
+// AUTH
+export async function login(
+  identifier: string,
+  password: string,
+): Promise<AuthResponseStrapi> {
+  return query("auth/local", "POST", { identifier, password }, false);
+}
+
+// USER
+export interface UserData {
+  id: number;
+  documentId: string;
+  email: string;
+  password: string;
+  role: string;
+  createdAt: number;
+  updatedAt: number;
 }
 
 // QUICK NOTE

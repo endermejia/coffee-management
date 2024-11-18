@@ -5,9 +5,10 @@ import { Label } from "@/components/ui/label";
 
 interface LoginProps {
   onLogin: (username: string, password: string) => void;
+  invalidCredentials: boolean;
 }
 
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({ onLogin, invalidCredentials }: LoginProps) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
@@ -43,6 +44,11 @@ export default function Login({ onLogin }: LoginProps) {
             required
           />
         </div>
+        {invalidCredentials && (
+          <p className="mb-4 text-sm text-red-500">
+            Credenciales inválidas. Inténtalo de nuevo.
+          </p>
+        )}
         <Button type="submit" className="w-full">
           Iniciar sesión
         </Button>

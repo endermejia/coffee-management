@@ -39,9 +39,13 @@ import {
   deleteTable,
   ExtraData,
   getProducts,
+  getStrapiToken,
   getTables,
+  login,
   OrderData,
   ProductData,
+  removeStrapiToken,
+  setStrapiToken,
   TableData,
   updateOrder,
 } from "@/lib/strapi";
@@ -60,6 +64,7 @@ const initialConfig: AppConfig = {
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [tables, setTables] = useState<TableData[]>([]);
   const [products, setProducts] = useState<ProductData[]>([]);
   const [selectedTableId, setselectedTableId] = useState<number | null>(null);
@@ -72,51 +77,57 @@ export default function App() {
   const [isLiquidateConfirmationOpen, setIsLiquidateConfirmationOpen] =
     useState(false);
   const [activeTab, setActiveTab] = useState("tables");
+  const [invalidCredentials, setInvalidCredentials] = useState(false);
   const { toast } = useToast();
 
-  const fetchTables = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     try {
-      await getTables().then((tablesData) => {
-        if (tablesData?.data) {
-          console.log("TABLES:", tablesData.data);
-          setTables(tablesData.data);
-        }
-      });
-    } catch {
+      const [tablesData, productsData] = await Promise.all([
+        getTables(),
+        getProducts(),
+      ]);
+      if (
+        tablesData?.error?.details?.status === 401 ||
+        tablesData?.error?.details?.status === 403 ||
+        productsData?.error?.details?.status === 401 ||
+        productsData?.error?.details?.status === 403
+      ) {
+        removeStrapiToken();
+        setIsLoggedIn(false);
+        return;
+      }
+      if (tablesData?.data) {
+        console.log("TABLES:", tablesData);
+        setTables(tablesData.data);
+      }
+      if (productsData?.data) {
+        console.log("PRODUCTS:", productsData);
+        setProducts(
+          productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching data:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch tables from Strapi",
-        duration: config.notificationDuration,
+        description: "Failed to fetch data from Strapi",
         variant: "destructive",
       });
     }
   }, [toast]);
 
   useEffect(() => {
-    fetchTables();
-  }, [fetchTables]);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const productsData = await getProducts();
-        if (productsData && productsData.data) {
-          console.log("PRODUCTS:", productsData.data);
-          setProducts(
-            productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
-      } catch {
-        toast({
-          title: "Error",
-          description: "Failed to fetch products from Strapi",
-          duration: config.notificationDuration,
-          variant: "destructive",
-        });
+    const checkAuth = async () => {
+      const token = getStrapiToken();
+      if (token) {
+        setIsLoggedIn(true);
+        await fetchData();
       }
+      setIsLoading(false);
     };
-    fetchProducts();
-  }, [toast]);
+
+    checkAuth();
+  }, [fetchData]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -131,10 +142,22 @@ export default function App() {
     document.body.className = config.theme;
   }, [config.theme]);
 
-  const handleLogin = (username: string, password: string) => {
-    setIsLoggedIn(true);
-    // TODO: implement Auth
-    console.log(username, password);
+  const handleLogin = async (username: string, password: string) => {
+    setInvalidCredentials(false);
+    try {
+      const response = await login(username, password);
+      console.log("LOGIN:", response);
+      if (!response.error && response.jwt) {
+        setStrapiToken(response.jwt);
+        setIsLoggedIn(true);
+        await fetchData();
+      } else {
+        setInvalidCredentials(true);
+      }
+    } catch (error) {
+      console.error("Error logging in:", error);
+      setInvalidCredentials(true);
+    }
   };
 
   const calculateTotalByOrders = useCallback((orders: OrderData[]): number => {
@@ -196,7 +219,7 @@ export default function App() {
       };
 
       createOrder(createOrderRequest).then(() => {
-        fetchTables();
+        fetchData();
         if (!config.disableNotifications) {
           toast({
             title: "Producto añadido",
@@ -223,7 +246,7 @@ export default function App() {
   ) => {
     try {
       updateOrder(orderDocumentId, { prepared, served }).then(() => {
-        fetchTables();
+        fetchData();
         if (!config.disableNotifications) {
           if (prepared && !served) {
             toast({
@@ -289,7 +312,7 @@ export default function App() {
     quantity: number,
   ) => {
     try {
-      updateOrder(orderDocumentId, { quantity }).then(() => fetchTables());
+      updateOrder(orderDocumentId, { quantity }).then(() => fetchData());
     } catch (error) {
       console.error("Error updating order quantity:", error);
       toast({
@@ -303,7 +326,7 @@ export default function App() {
 
   const handleUpdateNotes = async (orderDocumentId: string, notes: string) => {
     try {
-      updateOrder(orderDocumentId, { notes }).then(() => fetchTables());
+      updateOrder(orderDocumentId, { notes }).then(() => fetchData());
     } catch (error) {
       console.error("Error updating order notes:", error);
       toast({
@@ -323,7 +346,7 @@ export default function App() {
       await updateOrder(orderDocumentId, {
         extras: extras.map((extra) => extra.id),
       });
-      fetchTables();
+      fetchData();
     } catch (error) {
       console.error("Error updating order extras:", error);
       toast({
@@ -338,7 +361,7 @@ export default function App() {
   const handleRemoveOrder = async (orderDocumentId: string) => {
     try {
       deleteOrder(orderDocumentId).then(() => {
-        fetchTables();
+        fetchData();
         if (!config.disableNotifications) {
           toast({
             title: "Producto eliminado",
@@ -373,7 +396,7 @@ export default function App() {
             updateOrder(order.documentId, { releasedAt: Date.now() }),
           ),
         ).then(() => {
-          fetchTables().then(() => {
+          fetchData().then(() => {
             setselectedTableId(null);
             setIsConfirmationModalOpen(false);
             if (!config.disableNotifications) {
@@ -403,7 +426,7 @@ export default function App() {
       if (order) {
         updateOrder(order.documentId, {
           paid: !order.paid,
-        }).then(() => fetchTables());
+        }).then(() => fetchData());
       }
     } catch (error) {
       console.error("Error toggling paid status:", error);
@@ -427,7 +450,7 @@ export default function App() {
     };
 
     try {
-      createTable(newTable).then(() => fetchTables());
+      createTable(newTable).then(() => fetchData());
     } catch (error) {
       console.error("Error adding table:", error);
       toast({
@@ -443,7 +466,7 @@ export default function App() {
     const lastTable = tables[tables.length - 1];
     if (!lastTable) return;
     try {
-      deleteTable(lastTable.documentId).then(() => fetchTables());
+      deleteTable(lastTable.documentId).then(() => fetchData());
     } catch (error) {
       console.error("Error deleting table:", error);
       toast({
@@ -459,7 +482,7 @@ export default function App() {
     Promise.all(
       releasedOrders.map((order) => deleteOrder(order.documentId)),
     ).then(() => {
-      fetchTables();
+      fetchData();
       setIsOrderDialogOpen(false);
       setIsLiquidateConfirmationOpen(false);
       if (!config.disableNotifications) {
@@ -529,8 +552,18 @@ export default function App() {
     setActiveTab(value);
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-2xl font-semibold">Iniciando...</div>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
-    return <Login onLogin={handleLogin} />;
+    return (
+      <Login onLogin={handleLogin} invalidCredentials={invalidCredentials} />
+    );
   }
 
   return (
