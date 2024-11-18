@@ -22,7 +22,6 @@ import { ExtraData, OrderData, ProductData } from "@/lib/strapi";
 import ConfirmationModal from "@/components/ConfirmationModal";
 
 interface TableDetailProps {
-  children: React.ReactNode;
   tableNumber: number;
   orders: OrderData[];
   availableProducts: ProductData[];

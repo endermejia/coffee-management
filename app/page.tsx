@@ -805,33 +805,7 @@ export default function App() {
                     ?.orders?.filter((order) => !order.releasedAt) || [],
                 ) || 0
               }
-            >
-              <div className="mb-4">
-                <Label htmlFor="product-search">Buscar producto</Label>
-                <div className="flex items-center mt-1">
-                  <Search className="w-5 h-5 mr-2 text-gray-400" />
-                  <Input
-                    id="product-search"
-                    type="text"
-                    placeholder="Buscar producto..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="flex-grow"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {products.map((product) => (
-                  <Button
-                    key={product.id}
-                    onClick={() => handleAddProduct(product)}
-                    className="text-left"
-                  >
-                    {product.name}
-                  </Button>
-                ))}
-              </div>
-            </TableDetail>
+            />
           ) : (
             <TableOverview
               tables={tables}
