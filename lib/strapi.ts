@@ -145,12 +145,62 @@ export interface QuickNoteData {
   name: string;
 }
 
+export async function getQuickNotes(): Promise<
+  PageableResponseStrapi<QuickNoteData>
+> {
+  return query("quick-notes").then(
+    (res: PageableResponseStrapi<QuickNoteData>) => res,
+  );
+}
+
+export async function createQuickNote(
+  quickNoteData: Omit<QuickNoteData, "id" | "documentId">,
+): Promise<ResponseStrapi<QuickNoteData>> {
+  return query("quick-notes", "POST", quickNoteData);
+}
+
+export async function updateQuickNote(
+  documentId: string,
+  quickNoteData: Partial<QuickNoteData>,
+): Promise<ResponseStrapi<QuickNoteData>> {
+  return query(`quick-notes/${documentId}`, "PUT", quickNoteData);
+}
+
+export async function deleteQuickNote(
+  documentId: string,
+): Promise<ResponseStrapi<QuickNoteData>> {
+  return query(`quick-notes/${documentId}`, "DELETE");
+}
+
 // EXTRA
 export interface ExtraData {
   id: number;
   documentId: string;
   name: string;
   price: number;
+}
+
+export async function getExtras(): Promise<PageableResponseStrapi<ExtraData>> {
+  return query("extras").then((res: PageableResponseStrapi<ExtraData>) => res);
+}
+
+export async function createExtra(
+  extraData: Omit<ExtraData, "id" | "documentId">,
+): Promise<ResponseStrapi<ExtraData>> {
+  return query("extras", "POST", extraData);
+}
+
+export async function updateExtra(
+  documentId: string,
+  extraData: Partial<ExtraData>,
+): Promise<ResponseStrapi<ExtraData>> {
+  return query(`extras/${documentId}`, "PUT", extraData);
+}
+
+export async function deleteExtra(
+  documentId: string,
+): Promise<ResponseStrapi<ExtraData>> {
+  return query(`extras/${documentId}`, "DELETE");
 }
 
 // CATEGORY
@@ -162,6 +212,33 @@ export interface CategoryData {
   products: ProductData[];
 }
 
+export async function getCategories(): Promise<
+  PageableResponseStrapi<CategoryData>
+> {
+  return query("categories").then(
+    (res: PageableResponseStrapi<CategoryData>) => res,
+  );
+}
+
+export async function createCategory(
+  categoryData: Omit<CategoryData, "id" | "documentId">,
+): Promise<ResponseStrapi<CategoryData>> {
+  return query("categories", "POST", categoryData);
+}
+
+export async function updateCategory(
+  documentId: string,
+  categoryData: Partial<CategoryData>,
+): Promise<ResponseStrapi<CategoryData>> {
+  return query(`categories/${documentId}`, "PUT", categoryData);
+}
+
+export async function deleteCategory(
+  documentId: string,
+): Promise<ResponseStrapi<CategoryData>> {
+  return query(`categories/${documentId}`, "DELETE");
+}
+
 // SUBCATEGORY
 
 export interface SubcategoryData {
@@ -169,6 +246,33 @@ export interface SubcategoryData {
   documentId: string;
   name: string;
   products: ProductData[];
+}
+
+export async function getSubcategories(): Promise<
+  PageableResponseStrapi<SubcategoryData>
+> {
+  return query("subcategories").then(
+    (res: PageableResponseStrapi<SubcategoryData>) => res,
+  );
+}
+
+export async function createSubcategory(
+  subcategoryData: Omit<SubcategoryData, "id" | "documentId">,
+): Promise<ResponseStrapi<SubcategoryData>> {
+  return query("subcategories", "POST", subcategoryData);
+}
+
+export async function updateSubcategory(
+  documentId: string,
+  subcategoryData: Partial<SubcategoryData>,
+): Promise<ResponseStrapi<SubcategoryData>> {
+  return query(`subcategories/${documentId}`, "PUT", subcategoryData);
+}
+
+export async function deleteSubcategory(
+  documentId: string,
+): Promise<ResponseStrapi<SubcategoryData>> {
+  return query(`subcategories/${documentId}`, "DELETE");
 }
 
 // PRODUCT
@@ -197,7 +301,24 @@ export async function getProducts(): Promise<
   ).then((res: PageableResponseStrapi<ProductData>) => res);
 }
 
-// TODO: crud products
+export async function createProduct(
+  productData: Omit<ProductData, "id" | "documentId">,
+): Promise<ResponseStrapi<ProductData>> {
+  return query("products", "POST", productData);
+}
+
+export async function updateProduct(
+  documentId: string,
+  productData: Partial<ProductData>,
+): Promise<ResponseStrapi<ProductData>> {
+  return query(`products/${documentId}`, "PUT", productData);
+}
+
+export async function deleteProduct(
+  documentId: string,
+): Promise<ResponseStrapi<ProductData>> {
+  return query(`products/${documentId}`, "DELETE");
+}
 
 // ORDER
 

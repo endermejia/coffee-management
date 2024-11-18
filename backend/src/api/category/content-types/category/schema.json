@@ -17,7 +17,9 @@
       "regex": "comida|bebida",
       "default": "comida",
       "unique": true,
-      "required": true
+      "required": true,
+      "maxLength": 6,
+      "minLength": 6
     },
     "products": {
       "type": "relation",
