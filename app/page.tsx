@@ -2,35 +2,19 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import {
-  ChefHat,
-  ChevronsUp,
-  ClipboardList,
-  HandPlatter,
-  Home,
-  Minus,
-  Plus,
-  Settings,
-} from "lucide-react";
-import Login from "../components/Login";
-import TableOverview from "../components/TableOverview";
-import TableDetail from "../components/TableDetail";
-import ConfirmationModal from "../components/ConfirmationModal";
+import { ChefHat, ChevronsUp, HandPlatter, Home } from "lucide-react";
+
+import Config from "@/components/Config";
+import ConfirmationModal from "@/components/ConfirmationModal";
+import Kitchen from "@/components/Kitchen";
+import Login from "@/components/Login";
+import ReleasedOrders from "@/components/ReleasedOrders";
+import Service from "@/components/Service";
+import TableDetail from "@/components/TableDetail";
+import TableOverview from "@/components/TableOverview";
 import {
   createOrder,
   createTable,
@@ -76,7 +60,7 @@ export default function App() {
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [config, setConfig] = useState<AppConfig>(initialConfig);
   const [isLiquidateConfirmationOpen, setIsLiquidateConfirmationOpen] =
     useState(false);
@@ -583,174 +567,24 @@ export default function App() {
             </TabsList>
           </div>
           <div className="space-x-2">
-            <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Configuración</DialogTitle>
-                </DialogHeader>
-                <div className="py-4 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="disable-notifications">
-                      Deshabilitar notificaciones
-                    </Label>
-                    <Switch
-                      id="disable-notifications"
-                      checked={config.disableNotifications}
-                      onCheckedChange={(checked) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          disableNotifications: checked,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="notification-duration">
-                      Duración de notificaciones (segundos)
-                    </Label>
-                    <Input
-                      id="notification-duration"
-                      type="number"
-                      value={config.notificationDuration / 1000}
-                      onChange={(e) => {
-                        const value = Math.max(1, parseInt(e.target.value));
-                        setConfig((prev) => ({
-                          ...prev,
-                          notificationDuration: value * 1000,
-                        }));
-                      }}
-                      min="1"
-                      className="w-20 text-center"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="theme">Modo oscuro</Label>
-                    <Switch
-                      id="theme"
-                      checked={config.theme === "dark"}
-                      onCheckedChange={(checked) =>
-                        setConfig((prev) => ({
-                          ...prev,
-                          theme: checked ? "dark" : "light",
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="num-tables">Número de mesas</Label>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        disabled={Boolean(
-                          tables[tables.length - 1]?.orders.length,
-                        )}
-                        onClick={handleDeleteTable}
-                      >
-                        <Minus className="h-4 w-4" />
-                      </Button>
-                      <Input
-                        id="num-tables"
-                        disabled
-                        type="number"
-                        value={tables.length}
-                        className="w-20 text-center"
-                      />
-                      <Button onClick={handleAddTable}>
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Dialog
-              open={isOrderDialogOpen}
-              onOpenChange={setIsOrderDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  disabled={releasedOrders.length === 0}
-                >
-                  <ClipboardList className="h-4 w-4" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>Registro de pedidos</DialogTitle>
-                </DialogHeader>
-                <div className="py-4">
-                  {Object.entries(groupedReleasedOrders).map(
-                    ([releasedAt, orders]: [string, OrderData[]]) => (
-                      <Card key={releasedAt} className="mb-4">
-                        <CardHeader>
-                          <CardTitle>
-                            Mesa {orders[0].tableNumber} - Total:{" "}
-                            {totalByOrders(orders).toFixed(2)} €
-                          </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-muted-foreground text-sm mb-2">
-                            {new Date(Number(releasedAt)).toLocaleString()}
-                          </p>
-                          <ul>
-                            {orders.map((order: OrderData) => (
-                              <li key={order.id} className="mb-2">
-                                <div className="flex justify-between items-center">
-                                  <div className="flex items-center space-x-2">
-                                    <span className="font-bold">
-                                      {order.product.name}
-                                    </span>
-                                    <span className="text-xs text-muted-foreground font-semibold bg-gray-100 px-2 py-1 rounded">
-                                      x{order.quantity}
-                                    </span>
-                                  </div>
-                                  <span className="font-semibold">
-                                    {(
-                                      order.product.price * order.quantity +
-                                      order.extras.reduce(
-                                        (sum, extra) => sum + extra.price,
-                                        0,
-                                      )
-                                    ).toFixed(2)}{" "}
-                                    €
-                                  </span>
-                                </div>
-                                {order.extras && order.extras.length > 0 && (
-                                  <ul className="ml-6 mt-1 text-sm text-muted-foreground list-disc">
-                                    {order.extras.map((extra) => (
-                                      <li key={extra.id}>{extra.name}</li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </li>
-                            ))}
-                          </ul>
-                        </CardContent>
-                      </Card>
-                    ),
-                  )}
-                </div>
-                <Card className="sticky bottom-2 bg-primary text-primary-foreground flex-grow">
-                  <CardContent className="flex justify-between items-center p-4">
-                    <CardTitle className="text-xl">TOTAL</CardTitle>
-                    <Button
-                      onClick={handleLiquidateOrders}
-                      disabled={releasedOrders.length === 0}
-                    >
-                      <span className="text-2xl font-bold">
-                        {calculateTotalLiquidation().toFixed(2)} €
-                      </span>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </DialogContent>
-            </Dialog>
+            <Config
+              isSettingsOpen={isConfigOpen}
+              setIsSettingsOpen={setIsConfigOpen}
+              config={config}
+              setConfig={setConfig}
+              tables={tables}
+              handleAddTable={handleAddTable}
+              handleDeleteTable={handleDeleteTable}
+            />
+            <ReleasedOrders
+              isOrderDialogOpen={isOrderDialogOpen}
+              setIsOrderDialogOpen={setIsOrderDialogOpen}
+              releasedOrders={releasedOrders}
+              groupedReleasedOrders={groupedReleasedOrders}
+              totalByOrders={totalByOrders}
+              handleLiquidateOrders={handleLiquidateOrders}
+              calculateTotalLiquidation={calculateTotalLiquidation}
+            />
           </div>
         </div>
 
@@ -791,104 +625,18 @@ export default function App() {
             />
           )}
         </TabsContent>
-
         <TabsContent value="kitchen">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pendiente de preparar</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pendingPreparation.map(
-                (order: OrderData) =>
-                  order && (
-                    <div
-                      key={order.id}
-                      className="mb-2 p-2 border rounded transition-opacity duration-300"
-                      style={{ opacity: order.prepared ? 0.5 : 1 }}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="flex-1 space-x-2">
-                          {order.quantity > 1 && (
-                            <span className="text-muted-foreground">
-                              {order.quantity} x
-                            </span>
-                          )}
-                          <strong>{order.product.name}</strong>
-                        </span>
-                        <span className="text-muted-foreground mr-2">
-                          Mesa {order.tableNumber}
-                        </span>
-                        <Checkbox
-                          checked={order.prepared}
-                          onCheckedChange={(checked) =>
-                            handleUpdateStatus(
-                              order.documentId,
-                              checked as boolean,
-                              order.served,
-                            )
-                          }
-                          disabled={order.product.alwaysPrepared}
-                        />
-                      </div>
-                      {order.notes && (
-                        <span className="text-muted-foreground">
-                          Notas: {order.notes}
-                        </span>
-                      )}
-                    </div>
-                  ),
-              )}
-            </CardContent>
-          </Card>
+          <Kitchen
+            pendingPreparation={pendingPreparation}
+            handleUpdateStatus={handleUpdateStatus}
+          />
         </TabsContent>
 
         <TabsContent value="service">
-          <Card>
-            <CardHeader>
-              <CardTitle>Pendiente de servir</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {pendingService.map(
-                (order: OrderData) =>
-                  order && (
-                    <div
-                      key={order.id}
-                      className="mb-2 p-2 border rounded transition-opacity duration-300"
-                      style={{ opacity: order.served ? 0.5 : 1 }}
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="flex-1 space-x-2">
-                          {order.quantity > 1 && (
-                            <span className="text-muted-foreground">
-                              {order.quantity} x
-                            </span>
-                          )}
-                          <strong>{order.product.name}</strong>
-                        </span>
-                        <span className="text-muted-foreground mr-2">
-                          Mesa {order.tableNumber}
-                        </span>
-                        <Checkbox
-                          checked={order.served}
-                          onCheckedChange={(checked) =>
-                            handleUpdateStatus(
-                              order.documentId,
-                              order.prepared,
-                              checked as boolean,
-                            )
-                          }
-                        />
-                      </div>
-                      {order.notes && (
-                        <span className="text-muted-foreground">
-                          Notas: {order.notes}
-                        </span>
-                      )}
-                    </div>
-                  ),
-              )}
-            </CardContent>
-          </Card>
+          <Service
+            pendingService={pendingService}
+            handleUpdateStatus={handleUpdateStatus}
+          />
         </TabsContent>
       </Tabs>
 
