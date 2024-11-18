@@ -73,11 +73,13 @@ const ReleasedOrders: React.FC<ReleasedOrdersProps> = ({
                           </div>
                           <span className="font-semibold">
                             {(
-                              order.product.price * order.quantity +
-                              order.extras.reduce(
-                                (sum, extra) => sum + extra.price,
-                                0,
-                              )
+                              (order.product.price +
+                                order.extras.reduce(
+                                  (extraTotal, extra) =>
+                                    extraTotal + extra.price,
+                                  0,
+                                )) *
+                              order.quantity
                             ).toFixed(2)}{" "}
                             €
                           </span>

@@ -321,7 +321,7 @@ export default function TableDetail({
                           {(
                             (order.product.price +
                               order.extras.reduce(
-                                (acc, extra) => acc + extra.price,
+                                (extraTotal, extra) => extraTotal + extra.price,
                                 0,
                               )) *
                             order.quantity

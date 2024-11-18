@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Toaster } from "@/components/ui/toaster";
 import { useToast } from "@/components/ui/use-toast";
-import { ChefHat, ChevronsUp, HandPlatter, Home } from "lucide-react";
+import { ChefHat, HandPlatter, Home } from "lucide-react";
 
 import Config from "@/components/Config";
 import ConfirmationModal from "@/components/ConfirmationModal";
@@ -38,6 +38,7 @@ import {
   calculateUnpaidTotalByOrders,
   getStatusColorByOrders,
 } from "@/lib/utils";
+import ScrollToTopButton from "@/components/ScrollToTopButton";
 
 interface AppConfig {
   disableNotifications: boolean;
@@ -58,7 +59,6 @@ export default function App() {
   const [products, setProducts] = useState<ProductData[]>([]);
   const [selectedTableId, setselectedTableId] = useState<number | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
-  const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [isConfigOpen, setIsConfigOpen] = useState(false);
   const [config, setConfig] = useState<AppConfig>(initialConfig);
@@ -117,18 +117,8 @@ export default function App() {
       }
       setIsLoading(false);
     };
-
     checkAuth();
   }, [fetchData]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowScrollToTop(window.scrollY > 300);
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   useEffect(() => {
     document.body.className = config.theme;
@@ -364,9 +354,9 @@ export default function App() {
       if (selectedTable) {
         const releasedAt = Date.now();
         await Promise.all(
-          selectedTable.orders.map((order) =>
-            updateOrder(order.documentId, { releasedAt }),
-          ),
+          selectedTable.orders
+            .filter((order) => !order.releasedAt)
+            .map((order) => updateOrder(order.documentId, { releasedAt })),
         ).then(() => {
           fetchData().then(() => {
             setselectedTableId(null);
@@ -587,7 +577,6 @@ export default function App() {
             />
           </div>
         </div>
-
         <TabsContent value="tables">
           {selectedTableId ? (
             <TableDetail
@@ -631,7 +620,6 @@ export default function App() {
             handleUpdateStatus={handleUpdateStatus}
           />
         </TabsContent>
-
         <TabsContent value="service">
           <Service
             pendingService={pendingService}
@@ -655,14 +643,7 @@ export default function App() {
         description="¿Estás seguro de que quieres liquidar todos los pedidos? Esta acción no se puede deshacer."
       />
       <Toaster />
-      {showScrollToTop && (
-        <Button
-          className="fixed top-4 right-4 rounded-full p-3 transition-opacity duration-300 z-50"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-        >
-          <ChevronsUp className="h-6 w-6" />
-        </Button>
-      )}
+      <ScrollToTopButton />
     </div>
   );
 }
