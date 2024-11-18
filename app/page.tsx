@@ -25,7 +25,6 @@ import {
   Home,
   Minus,
   Plus,
-  Search,
   Settings,
 } from "lucide-react";
 import Login from "../components/Login";
@@ -50,6 +49,11 @@ import {
   TableData,
   updateOrder,
 } from "@/lib/strapi";
+import {
+  calculateTotalByOrders,
+  calculateUnpaidTotalByOrders,
+  getStatusColorByOrders,
+} from "@/lib/utils";
 
 interface AppConfig {
   disableNotifications: boolean;
@@ -74,7 +78,6 @@ export default function App() {
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [config, setConfig] = useState<AppConfig>(initialConfig);
-  const [searchTerm, setSearchTerm] = useState("");
   const [isLiquidateConfirmationOpen, setIsLiquidateConfirmationOpen] =
     useState(false);
   const [activeTab, setActiveTab] = useState("tables");
@@ -165,34 +168,13 @@ export default function App() {
     }
   };
 
-  const calculateTotalByOrders = useCallback((orders: OrderData[]): number => {
-    return orders?.reduce(
-      (total, order) =>
-        total +
-        (order.product.price +
-          (order.extras?.reduce(
-            (extraTotal, extra) => extraTotal + extra.price,
-            0,
-          ) || 0)) *
-          order.quantity,
-      0,
-    );
-  }, []);
+  const totalByOrders = useCallback(
+    (orders: OrderData[]): number => calculateTotalByOrders(orders),
+    [],
+  );
 
-  const calculateUnpaidTotalByOrders = useCallback(
-    (orders: OrderData[]): number =>
-      orders?.reduce(
-        (total, order) =>
-          total +
-          (order.paid
-            ? 0
-            : (order.product.price +
-                order.extras?.reduce(
-                  (extraTotal, extra) => extraTotal + extra.price,
-                  0,
-                ) || 0) * order.quantity),
-        0,
-      ),
+  const unpaidTotalByOrders = useCallback(
+    (orders: OrderData[]): number => calculateUnpaidTotalByOrders(orders),
     [],
   );
 
@@ -501,16 +483,10 @@ export default function App() {
     });
   };
 
-  const getOrdersStatusColor = (orders: OrderData[]) => {
-    if (!orders || !orders.length) return "bg-gray-200";
-    if (orders.some((order: OrderData) => !order.prepared))
-      return orders.some((order: OrderData) => order.prepared && !order.served)
-        ? "bg-gradient-to-r from-yellow-200 to-blue-200"
-        : "bg-yellow-200";
-    if (orders.some((order: OrderData) => !order.served)) return "bg-blue-200";
-    return "bg-green-200";
-  };
-
+  const statusColorByOrders = useCallback(
+    (orders: OrderData[]) => getStatusColorByOrders(orders),
+    [],
+  );
   const allOrders: OrderData[] = tables.flatMap(({ orders }) => orders);
   const releasedOrders = allOrders.filter((order) => order.releasedAt);
   const groupedReleasedOrders = releasedOrders.reduce(
@@ -549,7 +525,7 @@ export default function App() {
 
   const calculateTotalLiquidation = () => {
     return tables?.reduce(
-      (total, table) => total + calculateTotalByOrders(table.orders),
+      (total, table) => total + totalByOrders(table.orders),
       0,
     );
   };
@@ -715,7 +691,7 @@ export default function App() {
                         <CardHeader>
                           <CardTitle>
                             Mesa {orders[0].tableNumber} - Total:{" "}
-                            {calculateTotalByOrders(orders).toFixed(2)} €
+                            {totalByOrders(orders).toFixed(2)} €
                           </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -799,7 +775,7 @@ export default function App() {
               onReleaseTable={handleReleaseTable}
               onTogglePaid={handleTogglePaid}
               unpaidTotal={
-                calculateUnpaidTotalByOrders(
+                unpaidTotalByOrders(
                   tables
                     .find((t) => t.id === selectedTableId)
                     ?.orders?.filter((order) => !order.releasedAt) || [],
@@ -810,8 +786,8 @@ export default function App() {
             <TableOverview
               tables={tables}
               onTableSelect={setselectedTableId}
-              getTableColor={getOrdersStatusColor}
-              calculateTableUnpaidTotal={calculateUnpaidTotalByOrders}
+              getTableColor={statusColorByOrders}
+              calculateTableUnpaidTotal={unpaidTotalByOrders}
             />
           )}
         </TabsContent>
