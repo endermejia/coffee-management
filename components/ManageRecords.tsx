@@ -298,7 +298,7 @@ export default function ManageRecords({
   );
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <div className="block md:hidden">
           <Select value={activeTab} onValueChange={setActiveTab}>

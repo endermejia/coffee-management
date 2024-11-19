@@ -105,54 +105,50 @@ export default function App() {
 
   const fetchManageRecords = useCallback(async () => {
     try {
-      if (products.length === 0) {
-        const [
-          productsData,
-          categoriesData,
-          subcategoriesData,
-          extrasData,
-          quickNotesData,
-        ] = await Promise.all([
-          getProducts(),
-          getCategories(),
-          getSubcategories(),
-          getExtras(),
-          getQuickNotes(),
-        ]);
-        if (
-          productsData?.error?.details?.status === 401 ||
-          productsData?.error?.details?.status === 403
-        ) {
-          removeStrapiToken();
-          setIsLoggedIn(false);
-          return;
-        }
-        if (productsData?.data) {
-          console.log("PRODUCTS:", productsData);
-          setProducts(
-            productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
-        if (categoriesData?.data) {
-          setCategories(
-            categoriesData.data.sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
-        if (subcategoriesData?.data) {
-          setSubcategories(
-            subcategoriesData.data.sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
-        if (extrasData?.data) {
-          setExtras(
-            extrasData.data.sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
-        if (quickNotesData?.data) {
-          setQuickNotes(
-            quickNotesData.data.sort((a, b) => a.name.localeCompare(b.name)),
-          );
-        }
+      const [
+        productsData,
+        categoriesData,
+        subcategoriesData,
+        extrasData,
+        quickNotesData,
+      ] = await Promise.all([
+        getProducts(),
+        getCategories(),
+        getSubcategories(),
+        getExtras(),
+        getQuickNotes(),
+      ]);
+      if (
+        productsData?.error?.details?.status === 401 ||
+        productsData?.error?.details?.status === 403
+      ) {
+        removeStrapiToken();
+        setIsLoggedIn(false);
+        return;
+      }
+      if (productsData?.data) {
+        console.log("PRODUCTS:", productsData);
+        setProducts(
+          productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      }
+      if (categoriesData?.data) {
+        setCategories(
+          categoriesData.data.sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      }
+      if (subcategoriesData?.data) {
+        setSubcategories(
+          subcategoriesData.data.sort((a, b) => a.name.localeCompare(b.name)),
+        );
+      }
+      if (extrasData?.data) {
+        setExtras(extrasData.data.sort((a, b) => a.name.localeCompare(b.name)));
+      }
+      if (quickNotesData?.data) {
+        setQuickNotes(
+          quickNotesData.data.sort((a, b) => a.name.localeCompare(b.name)),
+        );
       }
     } catch (error) {
       console.error("Error fetching manage records:", error);
@@ -162,7 +158,7 @@ export default function App() {
         variant: "destructive",
       });
     }
-  }, [toast, products]);
+  }, [toast]);
 
   const fetchData = useCallback(async () => {
     await Promise.all([fetchTables(), fetchManageRecords()]);
@@ -630,7 +626,10 @@ export default function App() {
               quickNotes={quickNotes}
               extras={extras}
               products={products}
-              onUpdate={() => fetchManageRecords}
+              onUpdate={() => {
+                fetchManageRecords();
+                fetchTables();
+              }}
             />
             <ReleasedOrders
               isOrderDialogOpen={isOrderDialogOpen}
