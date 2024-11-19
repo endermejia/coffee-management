@@ -289,6 +289,17 @@ export interface ProductData {
   extras: ExtraData[];
 }
 
+export interface ProductRequest
+  extends Omit<
+    ProductData,
+    "id" | "documentId" | "category" | "subcategory" | "extras" | "quick_notes"
+  > {
+  category?: number;
+  subcategory?: number;
+  extras?: number[];
+  quick_notes?: number[];
+}
+
 export async function getProducts(): Promise<
   PageableResponseStrapi<ProductData>
 > {
@@ -302,30 +313,14 @@ export async function getProducts(): Promise<
 }
 
 export async function createProduct(
-  productData: Omit<
-    ProductData,
-    "id" | "documentId" | "category" | "subcategory" | "extras" | "quick_notes"
-  > & {
-    category?: number;
-    subcategory?: number;
-    extras?: number[];
-    quick_notes?: number[];
-  },
+  productData: ProductRequest,
 ): Promise<ResponseStrapi<ProductData>> {
   return query("products", "POST", productData);
 }
 
 export async function updateProduct(
   documentId: string,
-  productData: Omit<
-    ProductData,
-    "id" | "documentId" | "category" | "subcategory" | "extras" | "quick_notes"
-  > & {
-    category?: number;
-    subcategory?: number;
-    extras?: number[];
-    quick_notes?: number[];
-  },
+  productData: ProductRequest,
 ): Promise<ResponseStrapi<ProductData>> {
   return query(`products/${documentId}`, "PUT", productData);
 }

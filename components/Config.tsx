@@ -66,14 +66,14 @@ const Config: React.FC<ConfigProps> = ({
           <Settings className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl h-[90vh] overflow-y-auto auto-rows-min">
         <DialogHeader>
           <DialogTitle>Configuración</DialogTitle>
         </DialogHeader>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="manage">Gestionar Registros</TabsTrigger>
+            <TabsTrigger value="manage">Registros</TabsTrigger>
           </TabsList>
           <TabsContent value="general">
             <div className="py-4 space-y-4">
@@ -154,7 +154,7 @@ const Config: React.FC<ConfigProps> = ({
               quickNotes={quickNotes}
               extras={extras}
               products={products}
-              onUpdate={onUpdate}
+              onUpdate={() => onUpdate}
             />
           </TabsContent>
         </Tabs>

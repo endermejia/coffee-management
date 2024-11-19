@@ -41,7 +41,7 @@ const ReleasedOrders: React.FC<ReleasedOrdersProps> = ({
           <ClipboardList className="h-4 w-4" />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Registro de pedidos</DialogTitle>
         </DialogHeader>

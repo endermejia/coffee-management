@@ -18,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Edit, Trash } from "lucide-react";
 import {
   CategoryData,
@@ -41,6 +40,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  ProductRequest,
 } from "@/lib/strapi";
 
 interface ManageRecordsProps {
@@ -52,6 +52,24 @@ interface ManageRecordsProps {
   onUpdate: () => void;
 }
 
+enum Tab {
+  Category = "category",
+  Subcategory = "subcategory",
+  QuickNote = "quickNote",
+  Extra = "extra",
+  Product = "product",
+}
+
+const initialProductData = {
+  name: "",
+  price: 0,
+  alwaysPrepared: false,
+  category: undefined,
+  subcategory: undefined,
+  quick_notes: [],
+  extras: [],
+};
+
 export default function ManageRecords({
   categories,
   subcategories,
@@ -60,7 +78,7 @@ export default function ManageRecords({
   products,
   onUpdate,
 }: ManageRecordsProps) {
-  const [activeTab, setActiveTab] = useState("category");
+  const [activeTab, setActiveTab] = useState<string>(Tab.Category);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<
     | CategoryData
@@ -72,68 +90,93 @@ export default function ManageRecords({
   >(null);
   const [newItemName, setNewItemName] = useState("");
   const [newItemPrice, setNewItemPrice] = useState("");
-  const [newProductData, setNewProductData] = useState<
-    Omit<
-      ProductData,
-      | "id"
-      | "documentId"
-      | "category"
-      | "subcategory"
-      | "extras"
-      | "quick_notes"
-    > & {
-      category?: number;
-      subcategory?: number;
-      extras?: number[];
-      quick_notes?: number[];
-    }
-  >({
-    name: "",
-    price: 0,
-    alwaysPrepared: false,
-    category: undefined,
-    subcategory: undefined,
-    quick_notes: [],
-    extras: [],
-  });
+  const [newProductData, setNewProductData] =
+    useState<ProductRequest>(initialProductData);
 
   const resetForm = () => {
     setEditingItem(null);
     setNewItemName("");
     setNewItemPrice("");
-    setNewProductData({
-      name: "",
-      price: 0,
-      alwaysPrepared: false,
-      category: undefined,
-      subcategory: undefined,
-      quick_notes: [],
-      extras: [],
-    });
+    setNewProductData(initialProductData);
+  };
+
+  const handleCreateItem = async () => {
+    switch (activeTab) {
+      case Tab.Category:
+        await createCategory({ name: newItemName });
+        break;
+      case Tab.Subcategory:
+        await createSubcategory({ name: newItemName });
+        break;
+      case Tab.QuickNote:
+        await createQuickNote({ name: newItemName });
+        break;
+      case Tab.Extra:
+        await createExtra({
+          name: newItemName,
+          price: parseFloat(newItemPrice),
+        });
+        break;
+      case Tab.Product:
+        await createProduct(newProductData);
+        break;
+    }
+  };
+
+  const handleUpdateItem = async () => {
+    if (!editingItem) return;
+    switch (activeTab) {
+      case Tab.Category:
+        await updateCategory(editingItem.documentId, { name: newItemName });
+        break;
+      case Tab.Subcategory:
+        await updateSubcategory(editingItem.documentId, { name: newItemName });
+        break;
+      case Tab.QuickNote:
+        await updateQuickNote(editingItem.documentId, { name: newItemName });
+        break;
+      case Tab.Extra:
+        await updateExtra(editingItem.documentId, {
+          name: newItemName,
+          price: parseFloat(newItemPrice),
+        });
+        break;
+      case Tab.Product:
+        await updateProduct(editingItem.documentId, newProductData);
+        break;
+    }
+  };
+
+  const handleDeleteItem = async (
+    item:
+      | CategoryData
+      | SubcategoryData
+      | QuickNoteData
+      | ExtraData
+      | ProductData,
+  ) => {
+    switch (activeTab) {
+      case Tab.Category:
+        await deleteCategory(item.documentId);
+        break;
+      case Tab.Subcategory:
+        await deleteSubcategory(item.documentId);
+        break;
+      case Tab.QuickNote:
+        await deleteQuickNote(item.documentId);
+        break;
+      case Tab.Extra:
+        await deleteExtra(item.documentId);
+        break;
+      case Tab.Product:
+        await deleteProduct(item.documentId);
+        break;
+    }
   };
 
   const handleCreate = async () => {
     try {
-      switch (activeTab) {
-        case "category":
-          await createCategory({ name: newItemName });
-          break;
-        case "subcategory":
-          await createSubcategory({ name: newItemName });
-          break;
-        case "quickNote":
-          await createQuickNote({ name: newItemName });
-          break;
-        case "extra":
-          await createExtra({
-            name: newItemName,
-            price: parseFloat(newItemPrice),
-          });
-          break;
-        case "product":
-          await createProduct(newProductData);
-          break;
-      }
+      await handleCreateItem();
       resetForm();
       setIsDialogOpen(false);
       onUpdate();
@@ -145,75 +188,23 @@ export default function ManageRecords({
   const handleUpdate = async () => {
     if (!editingItem) return;
     try {
-      switch (activeTab) {
-        case "category":
-          await updateCategory(editingItem.documentId, { name: newItemName });
-          break;
-        case "subcategory":
-          await updateSubcategory(editingItem.documentId, {
-            name: newItemName,
-          });
-          break;
-        case "quickNote":
-          await updateQuickNote(editingItem.documentId, { name: newItemName });
-          break;
-        case "extra":
-          await updateExtra(editingItem.documentId, {
-            name: newItemName,
-            price: parseFloat(newItemPrice),
-          });
-          break;
-        case "product":
-          await updateProduct(editingItem.documentId, newProductData);
-          break;
-      }
+      await handleUpdateItem();
       resetForm();
       setIsDialogOpen(false);
       onUpdate();
     } catch (error) {
-      console.error("Error updating item:", error);
-    }
-  };
-
-  const handleDelete = async (
-    item:
-      | CategoryData
-      | SubcategoryData
-      | QuickNoteData
-      | ExtraData
-      | ProductData,
-  ) => {
-    try {
-      switch (activeTab) {
-        case "category":
-          await deleteCategory(item.documentId);
-          break;
-        case "subcategory":
-          await deleteSubcategory(item.documentId);
-          break;
-        case "quickNote":
-          await deleteQuickNote(item.documentId);
-          break;
-        case "extra":
-          await deleteExtra(item.documentId);
-          break;
-        case "product":
-          await deleteProduct(item.documentId);
-          break;
-      }
-      onUpdate();
-    } catch (error) {
-      console.error("Error deleting item:", error);
+      throw new Error((error as Error).message);
     }
   };
 
   const renderItems = (
-    items:
-      | CategoryData[]
-      | SubcategoryData[]
-      | QuickNoteData[]
-      | ExtraData[]
-      | ProductData[],
+    items: (
+      | CategoryData
+      | SubcategoryData
+      | QuickNoteData
+      | ExtraData
+      | ProductData
+    )[],
   ) => {
     return items.map((item) => (
       <Card key={item.id} className="mb-2">
@@ -222,7 +213,7 @@ export default function ManageRecords({
             {item.name}
             {"price" in item && ` - ${item.price.toFixed(2)} €`}
           </span>
-          <div>
+          <div className="flex space-x-2">
             <Button
               variant="ghost"
               size="icon"
@@ -233,7 +224,7 @@ export default function ManageRecords({
                   setNewItemPrice(item.price?.toString() || "");
                 }
                 if (
-                  activeTab === "product" &&
+                  activeTab === Tab.Product &&
                   item?.name &&
                   "price" in item &&
                   "alwaysPrepared" in item &&
@@ -262,7 +253,7 @@ export default function ManageRecords({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => handleDelete(item)}
+              onClick={() => handleDeleteItem(item)}
             >
               <Trash className="h-4 w-4" />
             </Button>
@@ -293,8 +284,7 @@ export default function ManageRecords({
         </Label>
         <Input
           id="price"
-          type="number"
-          value={newProductData.price}
+          value={newProductData.price.toString()}
           onChange={(e) =>
             setNewProductData({
               ...newProductData,
@@ -304,144 +294,32 @@ export default function ManageRecords({
           className="col-span-3"
         />
       </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="category" className="text-right">
-          Categoría
-        </Label>
-        <Select
-          value={newProductData.category?.toString()}
-          onValueChange={(value) =>
-            setNewProductData({
-              ...newProductData,
-              category: parseInt(value),
-            })
-          }
-        >
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Seleccionar categoría" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((category) => (
-              <SelectItem key={category.id} value={category.id.toString()}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="subcategory" className="text-right">
-          Subcategoría
-        </Label>
-        <Select
-          value={newProductData.subcategory?.toString()}
-          onValueChange={(value) =>
-            setNewProductData({
-              ...newProductData,
-              subcategory: parseInt(value),
-            })
-          }
-        >
-          <SelectTrigger className="col-span-3">
-            <SelectValue placeholder="Seleccionar subcategoría" />
-          </SelectTrigger>
-          <SelectContent>
-            {subcategories.map((subcategory) => (
-              <SelectItem
-                key={subcategory.id}
-                value={subcategory.id.toString()}
-              >
-                {subcategory.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="alwaysPrepared" className="text-right">
-          Siempre preparado
-        </Label>
-        <Checkbox
-          id="alwaysPrepared"
-          checked={newProductData.alwaysPrepared}
-          onCheckedChange={(checked) =>
-            setNewProductData({
-              ...newProductData,
-              alwaysPrepared: checked as boolean,
-            })
-          }
-        />
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="quickNotes" className="text-right">
-          Notas rápidas
-        </Label>
-        <div className="col-span-3 flex flex-wrap gap-2">
-          {quickNotes.map((qn) => (
-            <Button
-              key={qn.id}
-              variant={
-                newProductData.quick_notes?.includes(qn.id)
-                  ? "default"
-                  : "outline"
-              }
-              onClick={() => {
-                const updatedQuickNotes = newProductData.quick_notes?.includes(
-                  qn.id,
-                )
-                  ? newProductData.quick_notes.filter((id) => id !== qn.id)
-                  : [...(newProductData.quick_notes || []), qn.id];
-                setNewProductData({
-                  ...newProductData,
-                  quick_notes: updatedQuickNotes,
-                });
-              }}
-            >
-              {qn.name}
-            </Button>
-          ))}
-        </div>
-      </div>
-      <div className="grid grid-cols-4 items-center gap-4">
-        <Label htmlFor="extras" className="text-right">
-          Extras
-        </Label>
-        <div className="col-span-3 flex flex-wrap gap-2">
-          {extras.map((extra) => (
-            <Button
-              key={extra.id}
-              variant={
-                newProductData.extras?.includes(extra.id)
-                  ? "default"
-                  : "outline"
-              }
-              onClick={() => {
-                const updatedExtras = newProductData.extras?.includes(extra.id)
-                  ? newProductData.extras.filter((id) => id !== extra.id)
-                  : [...(newProductData.extras || []), extra.id];
-                setNewProductData({
-                  ...newProductData,
-                  extras: updatedExtras,
-                });
-              }}
-            >
-              {extra.name}
-            </Button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="category">Categorías</TabsTrigger>
-          <TabsTrigger value="subcategory">Subcategorías</TabsTrigger>
-          <TabsTrigger value="quickNote">Notas Rápidas</TabsTrigger>
-          <TabsTrigger value="extra">Extras</TabsTrigger>
+        <div className="block md:hidden">
+          <Select value={activeTab} onValueChange={setActiveTab}>
+            <SelectTrigger className="w-full font-bold">
+              <SelectValue placeholder="Seleccionar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="product">Productos</SelectItem>
+              <SelectItem value="extra">Extras</SelectItem>
+              <SelectItem value="quickNote">Notas rápidas</SelectItem>
+              <SelectItem value="category">Categorias</SelectItem>
+              <SelectItem value="subcategory">Subcategorias</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <TabsList className="hidden md:grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           <TabsTrigger value="product">Productos</TabsTrigger>
+          <TabsTrigger value="extra">Extras</TabsTrigger>
+          <TabsTrigger value="quickNote">Notas rápidas</TabsTrigger>
+          <TabsTrigger value="category">Categorias</TabsTrigger>
+          <TabsTrigger value="subcategory">Subcategorias</TabsTrigger>
         </TabsList>
         <TabsContent value="category">{renderItems(categories)}</TabsContent>
         <TabsContent value="subcategory">
@@ -454,23 +332,41 @@ export default function ManageRecords({
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button className="mt-4">
+          <Button className="mt-4 w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
-            Añadir {activeTab}
+            Añadir{" "}
+            {activeTab === "category"
+              ? "Categoría"
+              : activeTab === "subcategory"
+                ? "Subcategoría"
+                : activeTab === "quickNote"
+                  ? "Nota rápida"
+                  : activeTab === "extra"
+                    ? "Extra"
+                    : "Producto"}
           </Button>
         </DialogTrigger>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {editingItem ? "Editar" : "Añadir"} {activeTab}
+              {editingItem ? "Editar" : "Añadir"}{" "}
+              {activeTab === "category"
+                ? "Categoría"
+                : activeTab === "subcategory"
+                  ? "Subcategoría"
+                  : activeTab === "quickNote"
+                    ? "Nota rápida"
+                    : activeTab === "extra"
+                      ? "Extra"
+                      : "Producto"}
             </DialogTitle>
           </DialogHeader>
           {activeTab === "product" ? (
             renderProductForm()
           ) : (
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
+              <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                <Label htmlFor="name" className="sm:text-right">
                   Nombre
                 </Label>
                 <Input
@@ -481,8 +377,8 @@ export default function ManageRecords({
                 />
               </div>
               {activeTab === "extra" && (
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="price" className="text-right">
+                <div className="grid grid-cols-1 sm:grid-cols-4 items-center gap-4">
+                  <Label htmlFor="price" className="sm:text-right">
                     Precio
                   </Label>
                   <Input
@@ -496,7 +392,10 @@ export default function ManageRecords({
               )}
             </div>
           )}
-          <Button onClick={editingItem ? handleUpdate : handleCreate}>
+          <Button
+            className="w-full sm:w-auto"
+            onClick={editingItem ? handleUpdate : handleCreate}
+          >
             {editingItem ? "Actualizar" : "Crear"}
           </Button>
         </DialogContent>
