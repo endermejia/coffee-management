@@ -16,20 +16,26 @@ import Service from "@/components/Service";
 import TableDetail from "@/components/TableDetail";
 import TableOverview from "@/components/TableOverview";
 import {
+  CategoryData,
   createOrder,
   createTable,
   deleteOrder,
   deleteTable,
   ExtraData,
+  getCategories,
+  getExtras,
   getProducts,
+  getQuickNotes,
   getStrapiToken,
+  getSubcategories,
   getTables,
   login,
   OrderData,
-  PageableResponseStrapi,
   ProductData,
+  QuickNoteData,
   removeStrapiToken,
   setStrapiToken,
+  SubcategoryData,
   TableData,
   updateOrder,
 } from "@/lib/strapi";
@@ -57,6 +63,10 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [tables, setTables] = useState<TableData[]>([]);
   const [products, setProducts] = useState<ProductData[]>([]);
+  const [extras, setExtras] = useState<ExtraData[]>([]);
+  const [quickNotes, setQuickNotes] = useState<QuickNoteData[]>([]);
+  const [categories, setCategories] = useState<CategoryData[]>([]);
+  const [subcategories, setSubcategories] = useState<SubcategoryData[]>([]);
   const [selectedTableId, setselectedTableId] = useState<number | null>(null);
   const [isConfirmationModalOpen, setIsConfirmationModalOpen] = useState(false);
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
@@ -68,21 +78,12 @@ export default function App() {
   const [invalidCredentials, setInvalidCredentials] = useState(false);
   const { toast } = useToast();
 
-  const fetchData = useCallback(async () => {
+  const fetchTables = useCallback(async () => {
     try {
-      const [tablesData, productsData] = await Promise.all([
-        getTables(),
-        products.length === 0
-          ? getProducts()
-          : Promise.resolve({
-              data: products,
-            } as PageableResponseStrapi<ProductData>),
-      ]);
+      const tablesData = await getTables();
       if (
         tablesData?.error?.details?.status === 401 ||
-        tablesData?.error?.details?.status === 403 ||
-        productsData?.error?.details?.status === 401 ||
-        productsData?.error?.details?.status === 403
+        tablesData?.error?.details?.status === 403
       ) {
         removeStrapiToken();
         setIsLoggedIn(false);
@@ -92,21 +93,80 @@ export default function App() {
         console.log("TABLES:", tablesData);
         setTables(tablesData.data);
       }
-      if (products.length === 0 && productsData?.data) {
-        console.log("PRODUCTS:", productsData);
-        setProducts(
-          productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
-        );
-      }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error("Error fetching tables:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch data from Strapi",
+        description: "Failed to fetch tables from Strapi",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const fetchManageRecords = useCallback(async () => {
+    try {
+      if (products.length === 0) {
+        const [
+          productsData,
+          categoriesData,
+          subcategoriesData,
+          extrasData,
+          quickNotesData,
+        ] = await Promise.all([
+          getProducts(),
+          getCategories(),
+          getSubcategories(),
+          getExtras(),
+          getQuickNotes(),
+        ]);
+        if (
+          productsData?.error?.details?.status === 401 ||
+          productsData?.error?.details?.status === 403
+        ) {
+          removeStrapiToken();
+          setIsLoggedIn(false);
+          return;
+        }
+        if (productsData?.data) {
+          console.log("PRODUCTS:", productsData);
+          setProducts(
+            productsData.data.sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+        if (categoriesData?.data) {
+          setCategories(
+            categoriesData.data.sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+        if (subcategoriesData?.data) {
+          setSubcategories(
+            subcategoriesData.data.sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+        if (extrasData?.data) {
+          setExtras(
+            extrasData.data.sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+        if (quickNotesData?.data) {
+          setQuickNotes(
+            quickNotesData.data.sort((a, b) => a.name.localeCompare(b.name)),
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching manage records:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch manage records from Strapi",
         variant: "destructive",
       });
     }
   }, [toast, products]);
+
+  const fetchData = useCallback(async () => {
+    await Promise.all([fetchTables(), fetchManageRecords()]);
+  }, [fetchTables, fetchManageRecords]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -180,7 +240,7 @@ export default function App() {
       };
 
       createOrder(createOrderRequest).then(() => {
-        fetchData();
+        fetchTables();
         if (!config.disableNotifications) {
           toast({
             title: "Producto añadido",
@@ -207,7 +267,7 @@ export default function App() {
   ) => {
     try {
       updateOrder(orderDocumentId, { prepared, served }).then(() => {
-        fetchData();
+        fetchTables();
         if (!config.disableNotifications) {
           if (prepared && !served) {
             toast({
@@ -273,7 +333,7 @@ export default function App() {
     quantity: number,
   ) => {
     try {
-      updateOrder(orderDocumentId, { quantity }).then(() => fetchData());
+      updateOrder(orderDocumentId, { quantity }).then(() => fetchTables());
     } catch (error) {
       console.error("Error updating order quantity:", error);
       toast({
@@ -287,7 +347,7 @@ export default function App() {
 
   const handleUpdateNotes = async (orderDocumentId: string, notes: string) => {
     try {
-      updateOrder(orderDocumentId, { notes }).then(() => fetchData());
+      updateOrder(orderDocumentId, { notes }).then(() => fetchTables());
     } catch (error) {
       console.error("Error updating order notes:", error);
       toast({
@@ -307,7 +367,7 @@ export default function App() {
       await updateOrder(orderDocumentId, {
         extras: extras.map((extra) => extra.id),
       });
-      fetchData();
+      fetchTables();
     } catch (error) {
       console.error("Error updating order extras:", error);
       toast({
@@ -322,7 +382,7 @@ export default function App() {
   const handleRemoveOrder = async (orderDocumentId: string) => {
     try {
       deleteOrder(orderDocumentId).then(() => {
-        fetchData();
+        fetchTables();
         if (!config.disableNotifications) {
           toast({
             title: "Producto eliminado",
@@ -358,7 +418,7 @@ export default function App() {
             .filter((order) => !order.releasedAt)
             .map((order) => updateOrder(order.documentId, { releasedAt })),
         ).then(() => {
-          fetchData().then(() => {
+          fetchTables().then(() => {
             setselectedTableId(null);
             setIsConfirmationModalOpen(false);
             if (!config.disableNotifications) {
@@ -388,7 +448,7 @@ export default function App() {
       if (order) {
         updateOrder(order.documentId, {
           paid: !order.paid,
-        }).then(() => fetchData());
+        }).then(() => fetchTables());
       }
     } catch (error) {
       console.error("Error toggling paid status:", error);
@@ -412,7 +472,7 @@ export default function App() {
     };
 
     try {
-      createTable(newTable).then(() => fetchData());
+      createTable(newTable).then(() => fetchTables());
     } catch (error) {
       console.error("Error adding table:", error);
       toast({
@@ -428,7 +488,7 @@ export default function App() {
     const lastTable = tables[tables.length - 1];
     if (!lastTable) return;
     try {
-      deleteTable(lastTable.documentId).then(() => fetchData());
+      deleteTable(lastTable.documentId).then(() => fetchTables());
     } catch (error) {
       console.error("Error deleting table:", error);
       toast({
@@ -444,7 +504,7 @@ export default function App() {
     Promise.all(
       releasedOrders.map((order) => deleteOrder(order.documentId)),
     ).then(() => {
-      fetchData();
+      fetchTables();
       setIsOrderDialogOpen(false);
       setIsLiquidateConfirmationOpen(false);
       if (!config.disableNotifications) {
@@ -565,6 +625,12 @@ export default function App() {
               tables={tables}
               handleAddTable={handleAddTable}
               handleDeleteTable={handleDeleteTable}
+              categories={categories}
+              subcategories={subcategories}
+              quickNotes={quickNotes}
+              extras={extras}
+              products={products}
+              onUpdate={() => fetchManageRecords}
             />
             <ReleasedOrders
               isOrderDialogOpen={isOrderDialogOpen}

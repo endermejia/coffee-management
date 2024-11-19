@@ -221,7 +221,7 @@ export async function getCategories(): Promise<
 }
 
 export async function createCategory(
-  categoryData: Omit<CategoryData, "id" | "documentId">,
+  categoryData: Omit<CategoryData, "id" | "documentId" | "products">,
 ): Promise<ResponseStrapi<CategoryData>> {
   return query("categories", "POST", categoryData);
 }
@@ -257,7 +257,7 @@ export async function getSubcategories(): Promise<
 }
 
 export async function createSubcategory(
-  subcategoryData: Omit<SubcategoryData, "id" | "documentId">,
+  subcategoryData: Omit<SubcategoryData, "id" | "documentId" | "products">,
 ): Promise<ResponseStrapi<SubcategoryData>> {
   return query("subcategories", "POST", subcategoryData);
 }
@@ -302,14 +302,30 @@ export async function getProducts(): Promise<
 }
 
 export async function createProduct(
-  productData: Omit<ProductData, "id" | "documentId">,
+  productData: Omit<
+    ProductData,
+    "id" | "documentId" | "category" | "subcategory" | "extras" | "quick_notes"
+  > & {
+    category?: number;
+    subcategory?: number;
+    extras?: number[];
+    quick_notes?: number[];
+  },
 ): Promise<ResponseStrapi<ProductData>> {
   return query("products", "POST", productData);
 }
 
 export async function updateProduct(
   documentId: string,
-  productData: Partial<ProductData>,
+  productData: Omit<
+    ProductData,
+    "id" | "documentId" | "category" | "subcategory" | "extras" | "quick_notes"
+  > & {
+    category?: number;
+    subcategory?: number;
+    extras?: number[];
+    quick_notes?: number[];
+  },
 ): Promise<ResponseStrapi<ProductData>> {
   return query(`products/${documentId}`, "PUT", productData);
 }
