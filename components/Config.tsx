@@ -154,7 +154,7 @@ const Config: React.FC<ConfigProps> = ({
               quickNotes={quickNotes}
               extras={extras}
               products={products}
-              onUpdate={() => onUpdate}
+              onUpdate={onUpdate}
             />
           </TabsContent>
         </Tabs>

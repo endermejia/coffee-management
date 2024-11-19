@@ -42,6 +42,7 @@ import {
   deleteProduct,
   ProductRequest,
 } from "@/lib/strapi";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ManageRecordsProps {
   categories: CategoryData[];
@@ -293,6 +294,132 @@ export default function ManageRecords({
           }
           className="col-span-3"
         />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="category" className="text-right">
+          Categoría
+        </Label>
+        <Select
+          value={newProductData.category?.toString()}
+          onValueChange={(value) =>
+            setNewProductData({
+              ...newProductData,
+              category: parseInt(value),
+            })
+          }
+        >
+          <SelectTrigger className="col-span-3">
+            <SelectValue placeholder="Seleccionar categoría" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map((category) => (
+              <SelectItem key={category.id} value={category.id.toString()}>
+                {category.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="subcategory" className="text-right">
+          Subcategoría
+        </Label>
+        <Select
+          value={newProductData.subcategory?.toString()}
+          onValueChange={(value) =>
+            setNewProductData({
+              ...newProductData,
+              subcategory: parseInt(value),
+            })
+          }
+        >
+          <SelectTrigger className="col-span-3">
+            <SelectValue placeholder="Seleccionar subcategoría" />
+          </SelectTrigger>
+          <SelectContent>
+            {subcategories.map((subcategory) => (
+              <SelectItem
+                key={subcategory.id}
+                value={subcategory.id.toString()}
+              >
+                {subcategory.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="alwaysPrepared" className="text-right">
+          Siempre preparado
+        </Label>
+        <Checkbox
+          id="alwaysPrepared"
+          checked={newProductData.alwaysPrepared}
+          onCheckedChange={(checked) =>
+            setNewProductData({
+              ...newProductData,
+              alwaysPrepared: checked as boolean,
+            })
+          }
+        />
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="quickNotes" className="text-right">
+          Notas rápidas
+        </Label>
+        <div className="col-span-3 flex flex-wrap gap-2">
+          {quickNotes.map((qn) => (
+            <Button
+              key={qn.id}
+              variant={
+                newProductData.quick_notes?.includes(qn.id)
+                  ? "default"
+                  : "outline"
+              }
+              onClick={() => {
+                const updatedQuickNotes = newProductData.quick_notes?.includes(
+                  qn.id,
+                )
+                  ? newProductData.quick_notes.filter((id) => id !== qn.id)
+                  : [...(newProductData.quick_notes || []), qn.id];
+                setNewProductData({
+                  ...newProductData,
+                  quick_notes: updatedQuickNotes,
+                });
+              }}
+            >
+              {qn.name}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-4 items-center gap-4">
+        <Label htmlFor="extras" className="text-right">
+          Extras
+        </Label>
+        <div className="col-span-3 flex flex-wrap gap-2">
+          {extras.map((extra) => (
+            <Button
+              key={extra.id}
+              variant={
+                newProductData.extras?.includes(extra.id)
+                  ? "default"
+                  : "outline"
+              }
+              onClick={() => {
+                const updatedExtras = newProductData.extras?.includes(extra.id)
+                  ? newProductData.extras.filter((id) => id !== extra.id)
+                  : [...(newProductData.extras || []), extra.id];
+                setNewProductData({
+                  ...newProductData,
+                  extras: updatedExtras,
+                });
+              }}
+            >
+              {extra.name}
+            </Button>
+          ))}
+        </div>
       </div>
     </div>
   );

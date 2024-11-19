@@ -626,10 +626,7 @@ export default function App() {
               quickNotes={quickNotes}
               extras={extras}
               products={products}
-              onUpdate={() => {
-                fetchManageRecords();
-                fetchTables();
-              }}
+              onUpdate={fetchData}
             />
             <ReleasedOrders
               isOrderDialogOpen={isOrderDialogOpen}
