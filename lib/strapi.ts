@@ -55,13 +55,10 @@ async function query(
       };
     }
 
-    // Verificar que el contenido sea JSON y que no esté vacío
     const contentType = response.headers.get("Content-Type") || "";
     if (contentType.includes("application/json")) {
       return response.json();
     }
-
-    // Devolver un objeto vacío si no hay JSON en la respuesta
     return { data: [] };
   } catch (error) {
     return {
@@ -292,8 +289,15 @@ export interface ProductData {
 export interface ProductRequest
   extends Omit<
     ProductData,
-    "id" | "documentId" | "category" | "subcategory" | "extras" | "quick_notes"
+    | "id"
+    | "documentId"
+    | "price"
+    | "category"
+    | "subcategory"
+    | "extras"
+    | "quick_notes"
   > {
+  price: number | string;
   category?: number;
   subcategory?: number;
   extras?: number[];

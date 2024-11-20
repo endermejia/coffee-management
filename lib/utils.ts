@@ -10,7 +10,7 @@ export const calculateTotalByOrders = (orders: OrderData[]): number =>
   orders?.reduce(
     (total, order) =>
       total +
-      (order.product.price +
+      ((order.product?.price ?? 0) +
         (order.extras?.reduce(
           (extraTotal, extra) => extraTotal + extra.price,
           0,
@@ -25,7 +25,7 @@ export const calculateUnpaidTotalByOrders = (orders: OrderData[]): number =>
       total +
       (order.paid
         ? 0
-        : (order.product.price +
+        : ((order.product?.price ?? 0) +
             order.extras?.reduce(
               (extraTotal, extra) => extraTotal + extra.price,
               0,

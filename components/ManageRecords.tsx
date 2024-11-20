@@ -41,6 +41,7 @@ import {
   updateProduct,
   deleteProduct,
   ProductRequest,
+  ResponseStrapi,
 } from "@/lib/strapi";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -102,100 +103,116 @@ export default function ManageRecords({
   };
 
   const handleCreateItem = async () => {
+    let response: ResponseStrapi<unknown> | undefined;
     switch (activeTab) {
       case Tab.Category:
-        await createCategory({ name: newItemName });
+        response = await createCategory({ name: newItemName });
         break;
       case Tab.Subcategory:
-        await createSubcategory({ name: newItemName });
+        response = await createSubcategory({ name: newItemName });
         break;
       case Tab.QuickNote:
-        await createQuickNote({ name: newItemName });
+        response = await createQuickNote({ name: newItemName });
         break;
       case Tab.Extra:
-        await createExtra({
+        response = await createExtra({
           name: newItemName,
-          price: parseFloat(newItemPrice),
+          price: parseFloat(Number(newItemPrice).toFixed(2)),
         });
         break;
       case Tab.Product:
-        await createProduct(newProductData);
+        response = await createProduct({
+          ...newProductData,
+          price: parseFloat(Number(newProductData.price).toFixed(2)),
+        });
         break;
+    }
+
+    if (response?.error) {
+      alert(`Failed to create item: ${response.error.details.message}`);
+    } else {
+      onUpdate();
     }
   };
 
   const handleUpdateItem = async () => {
     if (!editingItem) return;
+    let response: ResponseStrapi<unknown> | undefined;
     switch (activeTab) {
       case Tab.Category:
-        await updateCategory(editingItem.documentId, { name: newItemName });
+        response = await updateCategory(editingItem.documentId, {
+          name: newItemName,
+        });
         break;
       case Tab.Subcategory:
-        await updateSubcategory(editingItem.documentId, { name: newItemName });
+        response = await updateSubcategory(editingItem.documentId, {
+          name: newItemName,
+        });
         break;
       case Tab.QuickNote:
-        await updateQuickNote(editingItem.documentId, { name: newItemName });
+        response = await updateQuickNote(editingItem.documentId, {
+          name: newItemName,
+        });
         break;
       case Tab.Extra:
-        await updateExtra(editingItem.documentId, {
+        response = await updateExtra(editingItem.documentId, {
           name: newItemName,
-          price: parseFloat(newItemPrice),
+          price: parseFloat(Number(newItemPrice).toFixed(2)),
         });
         break;
       case Tab.Product:
-        await updateProduct(editingItem.documentId, newProductData);
+        response = await updateProduct(editingItem.documentId, {
+          ...newProductData,
+          price: parseFloat(Number(newProductData.price).toFixed(2)),
+        });
         break;
+    }
+
+    if (response?.error) {
+      throw new Error(response.error.details.message);
+    } else {
+      onUpdate();
     }
   };
 
-  const handleDeleteItem = async (
-    item:
-      | CategoryData
-      | SubcategoryData
-      | QuickNoteData
-      | ExtraData
-      | ProductData,
-  ) => {
+  const handleDeleteItem = async (documentId: string) => {
+    let response: ResponseStrapi<unknown> | undefined;
     switch (activeTab) {
       case Tab.Category:
-        await deleteCategory(item.documentId);
+        response = await deleteCategory(documentId);
         break;
       case Tab.Subcategory:
-        await deleteSubcategory(item.documentId);
+        response = await deleteSubcategory(documentId);
         break;
       case Tab.QuickNote:
-        await deleteQuickNote(item.documentId);
+        response = await deleteQuickNote(documentId);
         break;
       case Tab.Extra:
-        await deleteExtra(item.documentId);
+        response = await deleteExtra(documentId);
         break;
       case Tab.Product:
-        await deleteProduct(item.documentId);
+        response = await deleteProduct(documentId);
         break;
+    }
+
+    if (response?.error) {
+      throw new Error(response.error.details.message);
+    } else {
+      onUpdate();
     }
   };
 
   const handleCreate = async () => {
-    try {
-      await handleCreateItem();
-      resetForm();
-      setIsDialogOpen(false);
-      onUpdate();
-    } catch (error) {
-      console.error("Error creating item:", error);
-    }
+    await handleCreateItem();
+    resetForm();
+    setIsDialogOpen(false);
   };
 
   const handleUpdate = async () => {
     if (!editingItem) return;
-    try {
-      await handleUpdateItem();
-      resetForm();
-      setIsDialogOpen(false);
-      onUpdate();
-    } catch (error) {
-      throw new Error((error as Error).message);
-    }
+    await handleUpdateItem();
+    resetForm();
+    setIsDialogOpen(false);
   };
 
   const renderItems = (
@@ -254,7 +271,7 @@ export default function ManageRecords({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => handleDeleteItem(item)}
+              onClick={() => handleDeleteItem(item.documentId)}
             >
               <Trash className="h-4 w-4" />
             </Button>
@@ -277,6 +294,7 @@ export default function ManageRecords({
             setNewProductData({ ...newProductData, name: e.target.value })
           }
           className="col-span-3"
+          required
         />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
@@ -285,14 +303,15 @@ export default function ManageRecords({
         </Label>
         <Input
           id="price"
-          value={newProductData.price.toString()}
+          value={newProductData.price}
           onChange={(e) =>
             setNewProductData({
               ...newProductData,
-              price: parseFloat(e.target.value),
+              price: e.target.value,
             })
           }
           className="col-span-3"
+          required
         />
       </div>
       <div className="grid grid-cols-4 items-center gap-4">
@@ -307,6 +326,7 @@ export default function ManageRecords({
               category: parseInt(value),
             })
           }
+          required
         >
           <SelectTrigger className="col-span-3">
             <SelectValue placeholder="Seleccionar categoría" />
@@ -332,6 +352,7 @@ export default function ManageRecords({
               subcategory: parseInt(value),
             })
           }
+          required
         >
           <SelectTrigger className="col-span-3">
             <SelectValue placeholder="Seleccionar subcategoría" />
@@ -459,7 +480,7 @@ export default function ManageRecords({
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogTrigger asChild>
-          <Button className="mt-4 w-full sm:w-auto">
+          <Button onClick={() => resetForm()} className="mt-4 w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
             Añadir{" "}
             {activeTab === "category"
@@ -501,6 +522,7 @@ export default function ManageRecords({
                   value={newItemName}
                   onChange={(e) => setNewItemName(e.target.value)}
                   className="col-span-3"
+                  required
                 />
               </div>
               {activeTab === "extra" && (
@@ -514,6 +536,7 @@ export default function ManageRecords({
                     value={newItemPrice}
                     onChange={(e) => setNewItemPrice(e.target.value)}
                     className="col-span-3"
+                    required
                   />
                 </div>
               )}
